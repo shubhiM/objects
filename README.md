@@ -1,4 +1,4 @@
-# Object proposal
+# Proposal to add Objects and Classes to Fer-de-lance
 
 ### Goal : Using a simplified version of Fer-de-lance and extending the language by adding support for Object Oriented Programming.
 
