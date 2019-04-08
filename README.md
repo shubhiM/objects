@@ -1,4 +1,4 @@
-# objects oriented programming.
+# Object Oriented Programming.
 
 ### Goal : Using a simplified version of Fer-de-lance and extending the language by adding support for Object Oriented Programming.
 
@@ -177,16 +177,34 @@ The following are the phases affected  by this new feature and changes in them.
         let list_of_first_100_even_numbers = range(1, 100, 2, nil) in
             sum(list_of_first_100_even_numbers)
             
-       
-    2. Parser - TODO: Add corresponding AST.
-    3. Well formedness : TODO: Add wellformedness checks
-    4. Static Typing: 
-    5. Tagging: 
-    6. Anfing
-    7. Compilation of Objects
-       - Replacing tuples in Fer-de-lance and instead reusing tuples tagging scheme for objects. 
-       
+#### Parser: Changes needs to be done to accomodate for new syntax forms for class definitions and object operations
+             
+             1. Extending parser to use this new syntax form. 
+             2. Adding a new form in AST called classdecl for declaration of a class,
+                  
+               type 'a field =
+                  | Field of string * 'a 
+                  
+               and type 'a method =
+                  | Method of string * 'a expr * 'a bind list * 'a expr * 'a  # including self
+                  
+               and type 'a classDecl =
+                  | Class of string * string *  'a * field list * 'a * method list * 'a
+                  
+               and type 'a program =
+                  | Program of 'a classdecl list * 'a decl list list * 'a expr * 'a
     
+#### Well formedness:
+             1. Scoping rules for classes defined in global name space
+             2. new is reserved keyword
+             3. self is reserved keyword.
+            
+            
+#### Type system : Not going to be implemented for the purpose of the project.
+
+#### Tagging : 
+#### Anfing :
+#### Compilation of Objects
 ## Timeline: 
 We are diving our project deliverables into two parts. 
 ### Phase 1: 
