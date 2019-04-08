@@ -64,7 +64,7 @@ The following are the phases affected  by this new feature and changes in them.
                
         
         # Creating objects of classes using new keyword which is a reserved keyword.
-            point_1 = new Point2D(1, 2) 
+            point_1 = new Point2D(1, 2)
             point_2 = new Point2D(2, 1)
            
           
@@ -92,9 +92,10 @@ The following are the phases affected  by this new feature and changes in them.
                      self.x
           
           
-       # Multiple level inheritance is supported by our language. Class cat will have all the fields and methods
-       # of its base class and its base class's base class and so on until we find a class that does not extend any
-       # class. Our language is also going to support dynamic dispatch to deal with polymorphic functions.
+       # Multiple level inheritance is supported by our language. 
+       # Class cat will have all the fields and methods of its base class and,
+       # its base class's base class and so on until we find a class that does not extend any class.
+       # Our language is also going to support dynamic dispatch to deal with polymorphic functions.
        
            class Animal:
                  fields name, legs, weight, habitat
@@ -127,8 +128,55 @@ The following are the phases affected  by this new feature and changes in them.
                      self.color
                      
                    
-       # Definition of Program has changed from merly being a collection of function groups to a collection of function groups
-       # and classes.
+       # Definition of Program has changed from  being a collection of function groups
+       # to a collection of function group and classes.
+       # For example the following is an example program in our language where we can create
+       # a linked list of numbers and using range and then also sum all the number using sum
+       
+        def range(start, end, step, list):
+            if start == end:
+               list
+            else:
+               range(start + step, end, step, (if list == nil : new Node(start) else: (list.next = new Node(start), list))
+               
+        def sum(list):
+            if list == nil : 0 else: list.first().val + sum(list.rest())
+                 
+            
+        class Node:
+            fields val, next
+            
+            Node(self, val):
+               self.val = val
+               self.next = nil
+               
+        class List:
+            # head, tail, curr are fields of Node type.
+            # There is no static type checking to infer the types of these fields.
+            fields head, tail, curr, size  
+            
+            List(self):
+               self.head = nil, self.tail=nil, self.curr=nil, self.size=0
+               
+            def add(self, val):
+                  curr.next = new Node(val), curr = curr.next, size = size + 1
+                  
+            def size(self):
+                self.size
+       
+            def isEmpty(self):
+               self.size == 0
+               
+            def first(self):
+               self.head
+            
+            def rest(self):
+               self.next
+               
+        
+        let list_of_first_100_even_numbers = range(1, 100, 2, nil) in
+            sum(list_of_first_100_even_numbers)
+            
        
     2. Parser - TODO: Add corresponding AST.
     3. Well formedness : TODO: Add wellformedness checks
