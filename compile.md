@@ -1,4 +1,5 @@
 1. class 
+
 We store class information in class descriptors, which stores class methods. If a class is inheritated from a base class, the class descriptor should have a pointer to the class descriptor of its base class.
 For a class
 ```
@@ -38,6 +39,7 @@ First the lookup the class descriptor, which is stored in instance `b`. With the
 The method is a lambda expression, which can be applied.
 
 2. instance variables
+
 Class variables are compiled similar to tuples.
 For a class
 ```
@@ -62,9 +64,11 @@ is stored on the heap like,
 | descriptor | N  | x | y | z |
 ```
 3. support for `self`
+
 Each class method should come with an argument `self` so the method can refer to class variables and other methods. `self` is a pointer to the class instance.
 To implement `self`, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including `self`.
 When an instance method is being called, `self` would be passed as the first argument.
 
 4. support for `instanceof`
+
 We can use the address of the class descriptor to test class membership,
