@@ -6,15 +6,14 @@
    
    The following are some of the features that are going to be added to the language.
  
-    1. this
-    2. Methods
-    3. Fields
-    4. Dynamic dispatch
-    5. Inheritance - single level inheritance only.
-    6. Overriding
-    7. Overloading
-    8. instanceof
-    9. Classes and constructors
+    1. Classes definitions and constructors
+    2. self
+    3. Methods
+    4. Fields
+    5. Dynamic dispatch
+    6. Inheritance - single and multilevel
+    7. Overriding
+    8. instanceof  
     
 ## Compiler Pipeline: 
 
