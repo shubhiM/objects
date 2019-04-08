@@ -205,6 +205,75 @@ The following are the phases affected  by this new feature and changes in them.
 #### Tagging : 
 #### Anfing :
 #### Compilation of Objects
+
+#### 1. class
+We store class information in class descriptors, which stores class methods. If a class is inheritated from a base class, the class descriptor should have a pointer to the class descriptor of its base class. For a class
+
+```
+class Base
+  fields x, y
+  def bar(self):
+      ...
+  def baz(self):
+      ...
+end
+```
+A class descriptor should be created on the heap:
+```
+| base | N | bar | baz |
+```
+where base is a pointer to its base class, N is the number of class methods. base should be null if the class has no base class.
+
+To handle single inheritance, the class descriptor of the inheritated class should have a pointer to the base class. For the class Der,
+
+```
+class Der extends Base
+  fields z
+  def bar(self):
+      ...
+  def der(self):
+      ...
+end
+```
+
+Its class descriptor should be like
+```
+| Base | N | bar | baz | der |
+```
+where bar should point to the method defined in Der instead of Base.
+
+When a method is being called, like
+```
+b.bar()
+```
+First the lookup the class descriptor, which is stored in instance b. With the class descriptor, lookup the method at an offset from the start of the class descriptor. The offset is calculated at compile time. The method is a lambda expression, which can be applied.
+
+#### 2. Instance variables
+Class variables are compiled similar to tuples. For a class
+```
+class Base
+  fields x, y
+end
+```
+An instance is stored on the heap like,
+```
+| descriptor | N | x | y |
+```
+To handle single inheritance, the fields of the base class is are put in the begining of the extended class, followed by the fiels of the base class. For example,
+```
+class Der extends Base
+  fields z
+end
+```
+is stored on the heap like,
+```
+| descriptor | N  | x | y | z |
+```
+#### 3. Support for self
+Each class method should come with an argument self so the method can refer to class variables and other methods. self is a pointer to the class instance. To implement self, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including self. When an instance method is being called, self would be passed as the first argument.
+
+#### 4. Support for instanceof
+We can use the address of the class descriptor to test class membership,
 ## Timeline: 
 We are diving our project deliverables into two parts. 
 ### Phase 1: 
