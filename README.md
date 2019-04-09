@@ -20,23 +20,48 @@
 Introducing objects and classes in our language is going to affect all phases of compilation. 
 The following are the phases affected  by this new feature and changes in them.
 
+#### Grammer: 
+      <dec> : 
+       | <classdec>
+      <classdec> : 
+       | class IDENTIFIER <classfields>
+       | class IDENTIFIER extends IDENTIFIER <classfields>
+      <classfields> :
+       | <classfield>
+       | <classfield> <classfields>
+      <classfield> : 
+       | <field>
+       | <method>
+      <method> :
+       | method IDENTIFIER(<ids>) : <exp>
+       | method IDENTIFIER(<ids>) -> <typ> : <exp>
+      <field> :
+       | field IDENTIFIER
+       | field <bind>
+      <exprs> : 
+       | ...
+       | new IDENTIFIER()
+       | IDENTIFIER . IDENTIFIER
+      
 #### Syntax: The following are the new syntax forms added to the language with respect to object oriented programming
        
         # Defining a class.
         class Point2D:
-            fields x, y
+            field x
+            field y
             ...
         end
         
         # Defining a class that extends base class
         class Point3D extends Point2:
-            fields z
+            field z
             ...
         end
         
         # Defining a class with both fields and methods
         class Point2D:
-            fields x, y
+            field x
+            field y
          
             method get_x(self):  
                self.x
@@ -47,7 +72,8 @@ The following are the phases affected  by this new feature and changes in them.
         
        # Defining a class with both fields and methods with type annotation s
         class Point2D:
-            fields x : int , y : int
+            field x : int 
+            field y : int
          
             method get_x(self) -> int:  
                self.x
@@ -144,16 +170,17 @@ The following are the phases affected  by this new feature and changes in them.
                  
             
         class Node:
-            fields val, next
+            field val
+            field next
         end    
         
         class List:
             # head, tail, curr are fields of Node type.
             # There is no static type checking to infer the types of these fields.
-            fields head, tail, curr, size  
-            
-            List(self):
-               self.head=nil; self.tail=nil; self.curr=nil; self.size=0
+            field head
+            field tail
+            field curr
+            field size 
                
             method add(self, val):
                   curr.next = new Node(val); curr = curr.next; size = size + 1
