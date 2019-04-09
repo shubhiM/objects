@@ -38,34 +38,31 @@ The following are the phases affected  by this new feature and changes in them.
         class Point2D:
             fields x, y
          
-            def get_x(self):  # Self is a keyword, used to refer current instance
+            method get_x(self):  
                self.x
           
-            def get_y(self):
+            method get_y(self):
                self.y
         end
         
-       
-        # Defining a Constructor for classes, to instantiate classes
-        
+       # Defining a class with both fields and methods with type annotation s
         class Point2D:
-            fields x, y
-            
-            Point2D(x, y):
-               self.x = x
-               self.y = y
-            
-            def get_x(self):
+            fields x : int , y : int
+         
+            method get_x(self) -> int:  
                self.x
-               
-            def get_y(self):
+          
+            method get_y(self) -> int:
                self.y
-               
-               
+        end
+                       
         
         # Creating objects of classes using new keyword which is a reserved keyword.
-            point_1 = new Point2D(1, 2)
-            point_2 = new Point2D(2, 1)
+            point_1 = new Point2D()
+            
+        # setting the fields
+            point_1.x = 1
+            point_1.y = 2
            
           
        # Accessing fields using DOT operator, DOT operator has a special purpose and is used only to access
@@ -85,46 +82,49 @@ The following are the phases affected  by this new feature and changes in them.
        
           class TogglePoint2D extends Point2D:
                 
-                def get_x(self):
-                    self.y
+                method get_x(self):
+                    self.y = x
+                    self.x
                 
-                def get_y(self):
-                     self.x
+                method get_y(self):
+                     self.x = y
+                     self.y
           
-          
+         end
        # Multiple level inheritance is supported by our language. 
        # Class cat will have all the fields and methods of its base class and,
        # its base class's base class and so on until we find a class that does not extend any class.
        # Our language is also going to support dynamic dispatch to deal with polymorphic functions.
        
-           class Animal:
+           class Animal: # All base classes extends Object class.
                  fields name, legs, weight, habitat
                  
-                 def get_name(self):
+                 method get_name(self):
                      self.name
                   
-                 def get_legs(self):
+                 method get_legs(self):
                      self.legs
                      
-                 def get_weight(self):
+                 method get_weight(self):
                      self.weight
                      
-                 def get_habitat(self):
+                 method get_habitat(self):
                      self.habitat
-                     
+           end          
+           
            class DomesticAnimal extends Animal:
                  fields owner
                
-                 def has_owner(self):
+                 method has_owner(self):
                   self.owner
                   
-                 def owned_by(self, owner):
+                 method owned_by(self, owner):
                      self.owner = owner
                      
            class Cat extends DomesticAnimal:
                  fields color
                   
-                 def has_color(self):
+                 method has_color(self):
                      self.color
                      
                    
@@ -149,7 +149,7 @@ The following are the phases affected  by this new feature and changes in them.
             Node(self, val):
                self.val = val
                self.next = nil
-               
+        end       
         class List:
             # head, tail, curr are fields of Node type.
             # There is no static type checking to infer the types of these fields.
@@ -158,21 +158,22 @@ The following are the phases affected  by this new feature and changes in them.
             List(self):
                self.head = nil, self.tail=nil, self.curr=nil, self.size=0
                
-            def add(self, val):
+            method add(self, val):
                   curr.next = new Node(val), curr = curr.next, size = size + 1
                   
-            def size(self):
+            method size(self):
                 self.size
        
-            def isEmpty(self):
+            method isEmpty(self):
                self.size == 0
                
-            def first(self):
+            method first(self):
                self.head
             
-            def rest(self):
+            method rest(self):
                self.next
                
+        end
         
         let list_of_first_100_even_numbers = range(1, 100, 2, nil) in
             sum(list_of_first_100_even_numbers)
