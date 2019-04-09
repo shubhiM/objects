@@ -139,20 +139,20 @@ The following are the phases affected  by this new feature and changes in them.
            end          
            
            class DomesticAnimal extends Animal:
-                 fields owner
+                 field owner
                
                  method has_owner(self):
                   self.owner
                   
                  method owned_by(self, owner):
                      self.owner = owner
-                     
+           end        
            class Cat extends DomesticAnimal:
-                 fields color
+                 field color
                   
                  method has_color(self):
                      self.color
-                     
+           end        
                    
        # Definition of Program has changed from  being a collection of function groups
        # to a collection of function group and classes.
@@ -202,10 +202,8 @@ The following are the phases affected  by this new feature and changes in them.
         let list_of_first_100_even_numbers = range(1, 100, 2, nil) in
             sum(list_of_first_100_even_numbers)
             
-#### Parser: Changes needs to be done to accomodate for new syntax forms for class definitions and object operations
-             
-             1. Extending parser to use this new syntax form. 
-             2. Adding a new form in AST called classdecl for declaration of a class,
+#### Parser: Extension of the AST.
+            
                type 'a typ =
                  | TyBlank of 'a
                  | TyCon of string * 'a
