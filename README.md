@@ -145,21 +145,18 @@ The following are the phases affected  by this new feature and changes in them.
             
         class Node:
             fields val, next
-            
-            Node(self, val):
-               self.val = val
-               self.next = nil
-        end       
+        end    
+        
         class List:
             # head, tail, curr are fields of Node type.
             # There is no static type checking to infer the types of these fields.
             fields head, tail, curr, size  
             
             List(self):
-               self.head = nil, self.tail=nil, self.curr=nil, self.size=0
+               self.head=nil; self.tail=nil; self.curr=nil; self.size=0
                
             method add(self, val):
-                  curr.next = new Node(val), curr = curr.next, size = size + 1
+                  curr.next = new Node(val); curr = curr.next; size = size + 1
                   
             method size(self):
                 self.size
@@ -182,18 +179,57 @@ The following are the phases affected  by this new feature and changes in them.
              
              1. Extending parser to use this new syntax form. 
              2. Adding a new form in AST called classdecl for declaration of a class,
-                  
-               type 'a field =
-                  | Field of string * 'a 
-                  
-               and type 'a method =
-                  | Method of string * 'a expr * 'a bind list * 'a expr * 'a  # including self
-                  
+               type 'a typ =
+                 | TyBlank of 'a
+                 | TyCon of string * 'a
+                 | TyVar of string * 'a
+                 | TyArr of 'a typ list * 'a typ * 'a
+                 | TyApp of 'a typ * 'a typ list * 'a
+                 | TyTup of 'a typ list * 'a
+
+               type 'a scheme =
+                 | SForall of string list * 'a typ * 'a
+
+               and 'a bind =
+                 | BBlank of 'a typ * 'a
+                 | BName of string * 'a typ * 'a
+                 | BTuple of 'a bind list * 'a
+
+               and 'a binding = ('a bind * 'a expr * 'a)
+
+               and 'a expr =
+                    | ESeq of 'a expr * 'a expr * 'a
+                    | ETuple of 'a expr list * 'a
+                    | EGetItem of 'a expr * int * int * 'a
+                    | ESetItem of 'a expr * int * int * 'a expr * 'a
+                    | ELet of 'a binding list * 'a expr * 'a
+                    | ELetRec of 'a binding list * 'a expr * 'a
+                    | EPrim1 of prim1 * 'a expr * 'a
+                    | EPrim2 of prim2 * 'a expr * 'a expr * 'a
+                    | EIf of 'a expr * 'a expr * 'a expr * 'a
+                    | ENumber of int * 'a
+                    | EBool of bool * 'a
+                    | ENil of 'a typ * 'a
+                    | EId of string * 'a
+                    | EApp of 'a expr * 'a expr list * 'a
+                    | ELambda of 'a bind list * 'a expr * 'a
+                    | EAnnot of 'a expr * 'a typ * 'a
+                    | EDot of string * string * 'a
+                    | ENew of String * 'a
+                   
+               and  type 'a decl =
+                 | DFun of string * 'a bind list * 'a scheme * 'a expr * 'a
+
+               and type 'a tydecl =
+                 | TyDecl of string * 'a typ list * 'a
+                                            
                and type 'a classDecl =
-                  | Class of string * string *  'a * field list * 'a * method list * 'a
-                  
+                  | Class of string * string *  'a bind list * 'a decl list * 'a
+               
                and type 'a program =
-                  | Program of 'a classdecl list * 'a decl list list * 'a expr * 'a
+                  | Program of 'a classdecl list * 'a tydecl list * 'a decl list list * 'a expr * 'a
+
+              
     
 #### Well formedness:
              1. Scoping rules for classes defined in global name space
