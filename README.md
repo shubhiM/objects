@@ -41,7 +41,13 @@ The following are the phases affected  by this new feature and changes in them.
       <exprs> : 
        | ...
        | new IDENTIFIER()
-       | IDENTIFIER . IDENTIFIER
+       | <obj-get>
+       | <obj-set>
+      <obj-get> :
+       | IDENTIFIER.IDENTIFIER
+       | <obj-get>.IDENTIFIER
+      <obj-set> :
+       | <obj-get> := <expr>
       
 #### Syntax: The following are the new syntax forms added to the language with respect to object oriented programming
        
@@ -87,18 +93,18 @@ The following are the phases affected  by this new feature and changes in them.
             point_1 = new Point2D()
             
         # setting the fields
-            point_1.x = 1
-            point_1.y = 2
+            point_1.x := 1
+            point_1.y := 2
            
           
        # Accessing fields using DOT operator, DOT operator has a special purpose and is used only to access
        # object fields or methods.
-            x1 = point_1.x
-            y1 = point_1.y
+            x1 := point_1.x
+            y1 := point_1.y
          
        # Accessing methods using DOT operator
-            x = point_1.get_x()
-            y = point_1.get_y()
+            x := point_1.get_x()
+            y := point_1.get_y()
             
             
        # Overriding methods in the derived class, overrided methods have to be of the same signature 
@@ -109,11 +115,11 @@ The following are the phases affected  by this new feature and changes in them.
           class TogglePoint2D extends Point2D:
                 
                 method get_x(self):
-                    self.y = x
+                    self.y := x;
                     self.x
                 
                 method get_y(self):
-                     self.x = y
+                     self.x := y;
                      self.y
           
          end
@@ -145,7 +151,7 @@ The following are the phases affected  by this new feature and changes in them.
                   self.owner
                   
                  method owned_by(self, owner):
-                     self.owner = owner
+                     self.owner := owner
            end        
            class Cat extends DomesticAnimal:
                  field color
@@ -183,7 +189,7 @@ The following are the phases affected  by this new feature and changes in them.
             field size 
                
             method add(self, val):
-                  curr.next = new Node(val); curr = curr.next; size = size + 1
+                  curr.next := new Node(val); curr := curr.next; size := size + 1
                   
             method size(self):
                 self.size
@@ -239,7 +245,8 @@ The following are the phases affected  by this new feature and changes in them.
                     | EApp of 'a expr * 'a expr list * 'a
                     | ELambda of 'a bind list * 'a expr * 'a
                     | EAnnot of 'a expr * 'a typ * 'a
-                    | EDot of string * string * 'a
+                    | EGetObj of 'a expr * string * 'a
+                    | ESetObj of 'a expr * string * 'a expr * 'a
                     | ENew of String * 'a
                    
                and  type 'a decl =
@@ -257,15 +264,52 @@ The following are the phases affected  by this new feature and changes in them.
               
     
 #### Well formedness:
-             1. Scoping rules for classes defined in global name space
-             2. new is reserved keyword
-             3. self is reserved keyword.
-            
+             1. extends <IDENTIFIER> where IDENTIFIER is a class.
+             2. Method names should be unique
+             3. Method argument ids should be unique
+             4. first argument to a method must be 'self'
+             5. Field names should be unique
+             6. self is keyword
+             7. new is a keyword
+             8. <IDENTIFIER> . <IDENTIFIER> , before . should be a class and after . should be a field in class
+             9. <IDENTIFIER> . <IDENTIFIER> (x, y, z) before . should be a class and after . should be a method in class with same arity
             
 #### Type system : Not going to be implemented for the purpose of the project.
 
 #### Tagging : 
+
 #### Anfing :
+
+                  type 'a immexpr = (* immediate expressions *)
+                    | ImmNum of int * 'a
+                    | ImmBool of bool * 'a
+                    | ImmId of string * 'a
+                    | ImmNil of 'a
+                  and 'a cexpr = (* compound expressions *)
+                    | CIf of 'a immexpr * 'a aexpr * 'a aexpr * 'a
+                    | CPrim1 of prim1 * 'a immexpr * 'a
+                    | CPrim2 of prim2 * 'a immexpr * 'a immexpr * 'a
+                    | CApp of 'a immexpr * 'a immexpr list * 'a
+                    | CImmExpr of 'a immexpr (* for when you just need an immediate value *)
+                    | CTuple of 'a immexpr list * 'a
+                    | CGetItem of 'a immexpr * int * 'a
+                    | CSetItem of 'a immexpr * int * 'a immexpr * 'a
+                    | CLambda of string list * 'a aexpr * 'a  
+                    | CInitObj of string * 'a
+                    | CGetObj of 'a immexpr * string * 'a  // this can return both a field or a closure.
+                    | CSetObj of 'a immexpr * string * 'a immexpr * 'a // we will only have fields for mutation
+                 and 'a aexpr = (* anf expressions *)
+                    | ASeq of 'a cexpr * 'a aexpr * 'a
+                    | ALet of string * 'a cexpr * 'a aexpr * 'a
+                    | ALetRec of (string * 'a cexpr) list * 'a aexpr * 'a
+                    | ACExpr of 'a cexpr
+                  and 'a adecl =
+                    | ADFun of string * string list * 'a aexpr * 'a
+                  and 'a aclassdecl =
+                    | AClass of string * string *  'a bind list * 'a adecl list * 'a
+                  and 'a aprogram =
+                    | AProgram of 'a aclassdecl list * 'a adecl list * 'a aexpr * 'a
+                  ;;
 #### Compilation of Objects
 
 #### 1. class
