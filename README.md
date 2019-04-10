@@ -273,6 +273,7 @@ The following are the phases affected  by this new feature and changes in them.
              7. new is a keyword
              8. <IDENTIFIER> . <IDENTIFIER> , before . should be a class and after . should be a field in class
              9. <IDENTIFIER> . <IDENTIFIER> (x, y, z) before . should be a class and after . should be a method in class with same arity
+            10: <IDENTIFIER> . <IDENTIFIER> := <something> mutation is only possible for class fields.
             
 #### Type system : Not going to be implemented for the purpose of the project.
 
