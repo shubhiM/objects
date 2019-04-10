@@ -7,11 +7,12 @@ let tok_span(start, endtok) = (Parsing.rhs_start_pos start, Parsing.rhs_end_pos 
 
 %token <int> NUM
 %token <string> ID TYID
-%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE CLASS METHOD DOT NEW SELF EXTENDS
+%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE CLASS METHOD DOT NEW SELF EXTENDS FIELD
 
 %right SEMI
 %left COLON
 %left PLUS MINUS TIMES GREATER LESSSPACE LESSNOSPACE GREATEREQ LESSEQ EQEQ AND OR
+%left DOT
 %left LPARENNOSPACE
 
 
@@ -96,9 +97,9 @@ simple_expr :
   | binop_expr LPARENNOSPACE exprs RPAREN { EApp($1, $3, full_span()) }
   | binop_expr LPARENNOSPACE RPAREN { EApp($1, [], full_span()) }
   // object cases
-  | NEW ID LPARENNOSPACE RPAREN { "fix me! " }
-  | expr DOT ID %prec SEMI { "fix me" }
-  | expr DOT ID COLONEQ expr { "fix me" }
+  | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
+  | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
+  | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
   // Simple cases
   | const { $1 }
   | LPARENNOSPACE expr COLON typ RPAREN { EAnnot($2, $4, full_span()) }
@@ -218,15 +219,15 @@ tydecl :
   | TYPE ID EQUAL LPARENSPACE startyps RPAREN { TyDecl($2, $5, full_span()) }
 
 classfield :
-  | FIELD ID { "fix me!!" }
-  | METHOD ID LPARENNOSPACE binds RPAREN COLON expr { "fix me!" }
+  | FIELD ID { Field((BName($2, TyBlank(full_span()), full_span())), full_span()) }
+  | decl { Method($1, full_span()) }
 
 classfields :
   | { [] }
   | classfield classfields { $1 :: $2 }
 
 classdecl :
-  | CLASS ID superclass COLON classfields { "fix me!" }
+  | CLASS ID superclass COLON classfields END { Class($2, $3, $5, full_span()) }
 
 superclass :
   | { None }
@@ -241,7 +242,7 @@ classdecls:
   | classdecl classdecls { $1 :: $2 }
 
 program :
-  | tydecls classdecls decls expr COLON typ EOF { Program($1, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
-  | tydecls classdecls decls expr EOF { Program($1, $3, $4, full_span()) }
+  | tydecls classdecls decls expr COLON typ EOF { Program($1, $2, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
+  | tydecls classdecls decls expr EOF { Program($1, $2, $3, $4, full_span()) }
 
 %%

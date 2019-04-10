@@ -123,3 +123,14 @@ let print_trace (trace : phase list) : string list =
     | Result s -> s in
   List.mapi (fun n p -> sprintf "Phase %d (%s):\n%s" n (phase_name p) (string_of_phase p)) (List.rev trace)
 ;;
+
+(* add debug to pipeline to print trace to stderr *)
+let debug (cur_pipeline : 'a pipeline) : 'a pipeline = 
+    let strings_of_trace = 
+      match cur_pipeline with
+      | Error(errs, trace) -> print_trace trace
+      | Ok(cur_val, trace) -> print_trace trace
+    in
+    let _ = List.map (fun x -> Printf.eprintf "%s\n" x) strings_of_trace in
+    cur_pipeline
+;;

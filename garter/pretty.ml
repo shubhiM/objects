@@ -150,8 +150,8 @@ let string_of_tydecl (td : 'a tydecl) : string =
   string_of_tydecl_with (fun _ -> "") td
 
 let string_of_program_with (print_a : 'a -> string) (p : 'a program) : string =
-  match p with
-  | Program(tydecls, decls, body, a) ->
+  match p with (*TODO*)
+  | Program(tydecls, classdecls, decls, body, a) ->
      let help group =
        ExtString.String.join "\nand " (List.map (string_of_decl_with print_a) group) in
      (ExtString.String.join "\n\n" (List.map (string_of_tydecl_with print_a) tydecls)) ^ "\n" ^
@@ -430,7 +430,7 @@ let format_tydecl (fmt : Format.formatter) (print_a : 'a -> string) (td : 'a tyd
 ;;
 let format_program (fmt : Format.formatter) (print_a : 'a -> string) (p : 'a program) : unit =
   match p with
-  | Program(tydecls, decls, body, a) ->
+  | Program(tydecls, classdecls(*TODO*), decls, body, a) ->
      print_list fmt (fun fmt -> format_tydecl fmt print_a) tydecls (fun fmt -> pp_print_break fmt 1 0);
      print_list fmt (fun fmt -> format_declgroup fmt print_a) decls (fun fmt -> pp_print_break fmt 1 0);
      pp_print_break fmt 1 0;

@@ -191,7 +191,7 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
        (errs, tyenv)
   in
   match p with
-  | Program(tydecls, decls, body, _) ->
+  | Program(tydecls, classdecls(*TODO*), decls, body, _) ->
      let rec find name (decls : 'a decl list) =
        match decls with
        | [] -> None
@@ -225,8 +225,8 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
 let rename_and_tag (p : tag program) : tag program =
   let rec rename env p =
     match p with
-    | Program(tydecls, decls, body, tag) ->
-       Program(tydecls, List.map (fun g -> List.map (helpD env) g) decls, helpE env body, tag)
+    | Program(tydecls, classdecls(*TODO*), decls, body, tag) ->
+       Program(tydecls, [], List.map (fun g -> List.map (helpD env) g) decls, helpE env body, tag)
   and helpD env decl =
     match decl with
     | DFun(name, args, scheme, body, tag) ->
@@ -304,8 +304,8 @@ let defn_to_letrec (p : 'a program) : 'a program =
          (BName(name, instantiate scheme, tag), ELambda(args, body, tag), tag) in
     ELetRec(List.map decl_to_binding decls, body, tag) in
   match p with
-  | Program(tydecls, declgroups, body, tag) ->
-     Program(tydecls, [], wrap declgroups body tag, tag)
+  | Program(tydecls, classdecls(*TODO*), declgroups, body, tag) ->
+     Program(tydecls, [], [], wrap declgroups body tag, tag)
 
 let desugar_bindings (p : sourcespan program) : sourcespan program =
   let gensym =
@@ -315,7 +315,7 @@ let desugar_bindings (p : sourcespan program) : sourcespan program =
       sprintf "%s_%d" name (!next)) in
   let rec helpP (p : sourcespan program) =
     match p with
-    | Program(tydecls, decls, body, tag) -> Program(tydecls, List.map helpG decls, helpE body, tag)
+    | Program(tydecls, classdecls(*TODO*), decls, body, tag) -> Program(tydecls, [], List.map helpG decls, helpE body, tag)
   and helpG g =
     List.map helpD g
   and helpD d =
@@ -408,7 +408,7 @@ type 'a anf_bind =
 let anf (p : tag program) : unit aprogram =
   let rec helpP (p : tag program) : unit aprogram =
     match p with
-    | Program(_, decls, body, _) -> AProgram(List.concat(List.map helpG decls), helpA body, ())
+    | Program(_, classdecls(*TODO*), decls, body, _) -> AProgram(List.concat(List.map helpG decls), helpA body, ())
   and helpG (g : tag decl list) : unit adecl list =
     List.map helpD g
   and helpD (d : tag decl) : unit adecl =
@@ -1322,5 +1322,6 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)
   |> (add_phase anfed (fun p -> (atag (anf p))))
+  |>  debug
   |> (add_phase result compile_prog)
 ;;

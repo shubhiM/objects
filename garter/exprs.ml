@@ -64,15 +64,26 @@ and 'a expr =
   | EApp of 'a expr * 'a expr list * 'a
   | ELambda of 'a bind list * 'a expr * 'a
   | EAnnot of 'a expr * 'a typ * 'a
+  | EDot of 'a expr * string * 'a
+  | EDotSet of 'a expr * string * 'a expr * 'a
+  | ENew of string * 'a
+
 
 type 'a decl =
   | DFun of string * 'a bind list * 'a scheme * 'a expr * 'a
 
 type 'a tydecl =
   | TyDecl of string * 'a typ list * 'a
-                                                            
+
+type 'a classfield =
+  | Field of 'a bind * 'a
+  | Method of 'a decl * 'a
+
+type 'a classdecl = 
+  | Class of string * string option *  'a classfield list * 'a
+                                                          
 type 'a program =
-  | Program of 'a tydecl list * 'a decl list list * 'a expr * 'a
+  | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a
 
 type 'a immexpr = (* immediate expressions *)
   | ImmNum of int * 'a
@@ -204,12 +215,12 @@ and map_tag_TD (f : 'a -> 'b) td =
      TyDecl(name, List.map (map_tag_T f) args, tag_a)
 and map_tag_P (f : 'a -> 'b) p =
   match p with
-  | Program(tydecls, declgroups, body, a) ->
+  | Program(tydecls, classdecls, declgroups, body, a) ->
      let tag_a = f a in
      let tag_tydecls = List.map (map_tag_TD f) tydecls in
      let tag_decls = List.map (fun group -> List.map (map_tag_D f) group) declgroups in
      let tag_body = map_tag_E f body in
-     Program(tag_tydecls, tag_decls, tag_body, tag_a)
+     Program(tag_tydecls, [](* TODO *) ,tag_decls, tag_body, tag_a)
 
 let tag (p : 'a program) : tag program =
   let next = ref 0 in
@@ -236,8 +247,8 @@ let prog_and_tag (p : 'a program) : ('a * tag) program =
            
 let rec untagP (p : 'a program) : unit program =
   match p with
-  | Program(tydecls, decls, body, _) ->
-     Program(List.map untagTD tydecls, List.map (fun group -> List.map untagD group) decls, untagE body, ())
+  | Program(tydecls, classdecls, decls, body, _) ->
+     Program(List.map untagTD tydecls, [](*TODO*) ,List.map (fun group -> List.map untagD group) decls, untagE body, ())
 and untagE e =
   match e with
   | ESeq(e1, e2, _) -> ESeq(untagE e1, untagE e2, ())

@@ -472,7 +472,7 @@ let infer_group env (g : sourcespan decl list) (s : 'a typ subst)
 
 let infer_prog env (p : sourcespan program) : 'a typ =
   match p with
-  | Program(typedecls, declgroups, body, tag) ->
+  | Program(typedecls, classdecls, declgroups, body, tag) ->
       (* process typedecls, add type aliases to substitution s *)
       let s =
         List.fold_left

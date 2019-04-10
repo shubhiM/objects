@@ -1,0 +1,7 @@
+class Foo:
+	field x
+	field y
+	def f():
+		1
+end
+1

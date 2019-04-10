@@ -78,6 +78,7 @@ rule token = parse
   | "extends" { EXTENDS }
   | "method" { METHOD }
   | "new" { NEW }
+  | "field" { FIELD }
   | "." { DOT }
   | "self" { SELF } 
   | tyident as x { TYID x }
