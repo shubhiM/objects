@@ -24,8 +24,8 @@ The following are the phases affected  by this new feature and changes in them.
       <dec> : 
        | <classdec>
       <classdec> : 
-       | class IDENTIFIER <classfields>
-       | class IDENTIFIER extends IDENTIFIER <classfields>
+       | class IDENTIFIER : <classfields>
+       | class IDENTIFIER extends IDENTIFIER : <classfields>
       <classfields> :
        | <classfield>
        | <classfield> <classfields>
