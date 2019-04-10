@@ -59,7 +59,7 @@ let name_of_op2 op =
   | LessEq -> "LessEq"
   | Eq -> "Eq"
   | EqB -> "EqB"
-               
+
 
 let rec string_of_typ (t : 'a typ) : string =
   match t with
@@ -136,6 +136,8 @@ let string_of_decl_with (print_a : 'a -> string) (d : 'a decl) : string =
        name
        (ExtString.String.join ", " (List.map string_of_bind args))
        (string_of_expr_with print_a body) (print_a a)
+
+
 let string_of_decl (d : 'a decl) : string =
   string_of_decl_with (fun _ -> "") d
 
@@ -146,6 +148,38 @@ let string_of_tydecl_with (print_a : 'a -> string) (td : 'a tydecl) : string =
        name
        (ExtString.String.join ", " (List.map string_of_typ args))
        (print_a a)
+
+   let string_of_method_with (print_a : 'a -> string) (d : 'a decl) : string =
+         match d with
+         | DFun(name, args, _, body, a) ->
+            sprintf "(def %s(self, %s):\n  %s)%s"
+              name
+              (ExtString.String.join ", " (List.map string_of_bind args))
+              (string_of_expr_with print_a body) (print_a a)
+
+let string_of_method (d : 'a decl) : string =
+    string_of_method_with (fun _ -> "") d
+
+let string_of_classfield_with (print_a : 'a -> string) (cf : 'a classfield) : string =
+      match cf with
+        | Field(bind, pos) -> sprintf "field %s" (string_of_bind bind)
+        | Method(decl, pos) -> (string_of_method decl)
+
+let string_of_classfield (cf : 'a classfield) : string =
+          string_of_classfield_with (fun _ -> "") cf
+
+ let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : string =
+         match cd with
+         | Class(name, basename, classfields, a) ->
+            sprintf "class %s extends %s:\n %s %s"
+              name
+              (match  basename with
+                |Some(name) -> name
+                | _ -> "object"
+              )
+              (ExtString.String.join "\n" (List.map string_of_classfield classfields))
+              (print_a a)
+
 let string_of_tydecl (td : 'a tydecl) : string =
   string_of_tydecl_with (fun _ -> "") td
 
@@ -155,6 +189,7 @@ let string_of_program_with (print_a : 'a -> string) (p : 'a program) : string =
      let help group =
        ExtString.String.join "\nand " (List.map (string_of_decl_with print_a) group) in
      (ExtString.String.join "\n\n" (List.map (string_of_tydecl_with print_a) tydecls)) ^ "\n" ^
+     (ExtString.String.join "\n\n" (List.map (string_of_classdecl_with print_a) classdecls)) ^ "\n" ^
      (ExtString.String.join "\n\n" (List.map help decls)) ^ "\n" ^
        (string_of_expr_with print_a body) ^ "\n" ^ (print_a a)
 let string_of_program (p : 'a program) : string =
@@ -239,7 +274,7 @@ let print_comma_sep fmt =
   pp_print_string fmt ","; pp_print_space fmt ();;
 let print_star_sep fmt =
   pp_print_string fmt " *"; pp_print_space fmt ();;
-let maybe_angle str = 
+let maybe_angle str =
   if str = "" then "" else "<" ^ str ^ ">";;
 let open_label fmt label a =
   pp_open_hvbox fmt indent; pp_print_string fmt label; pp_print_string fmt (maybe_angle a);
@@ -311,7 +346,7 @@ let rec format_expr (fmt : Format.formatter) (print_a : 'a -> string) (e : 'a ex
      open_label fmt "EGetItem" (print_a a);
      help e; print_comma_sep fmt; pp_print_int fmt idx;
      close_paren fmt
-  | ESetItem(e, idx, len, newval, a) -> 
+  | ESetItem(e, idx, len, newval, a) ->
      open_label fmt "ESetItem" (print_a a);
      help e; print_comma_sep fmt; pp_print_int fmt idx; pp_print_string fmt " := "; help newval;
      close_paren fmt
@@ -338,7 +373,7 @@ let rec format_expr (fmt : Format.formatter) (print_a : 'a -> string) (e : 'a ex
   | EPrim1(op, e, a) ->
      open_label fmt "EPrim1" (print_a a);
      pp_print_string fmt (name_of_op1 op);
-     print_comma_sep fmt; help e; 
+     print_comma_sep fmt; help e;
      close_paren fmt
   | EPrim2(op, e1, e2, a) ->
      open_label fmt "EPrim2" (print_a a);
@@ -395,7 +430,7 @@ let format_scheme (fmt : Format.formatter) (print_a : 'a -> string) (s : 'a sche
      print_list fmt pp_print_string args print_comma_sep;
      pp_print_string fmt ", ";
      format_typ fmt print_a typ;
-     close_paren fmt                
+     close_paren fmt
 ;;
 let format_decl (fmt : Format.formatter) (print_a : 'a -> string) (d : 'a decl) : unit =
   match d with
