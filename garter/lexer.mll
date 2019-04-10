@@ -74,8 +74,13 @@ rule token = parse
   | "begin" { BEGIN }
   | "end" { END }
   | "rec" { REC }
+  | "class" { CLASS }
+  | "extends" { EXTENDS }
+  | "method" { METHOD }
+  | "new" { NEW }
+  | "." { DOT }
+  | "self" { SELF } 
   | tyident as x { TYID x }
   | ident as x { if x = "_" then UNDERSCORE else ID x }
   | eof { EOF }
   | _ as c { failwith (sprintf "Unrecognized character: %c" c) }
-

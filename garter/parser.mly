@@ -7,7 +7,7 @@ let tok_span(start, endtok) = (Parsing.rhs_start_pos start, Parsing.rhs_end_pos 
 
 %token <int> NUM
 %token <string> ID TYID
-%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE
+%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE CLASS METHOD DOT NEW SELF EXTENDS
 
 %right SEMI
 %left COLON
@@ -95,6 +95,10 @@ simple_expr :
   // Function calls
   | binop_expr LPARENNOSPACE exprs RPAREN { EApp($1, $3, full_span()) }
   | binop_expr LPARENNOSPACE RPAREN { EApp($1, [], full_span()) }
+  // object cases
+  | NEW ID LPARENNOSPACE RPAREN { "fix me! " }
+  | expr DOT ID %prec SEMI { "fix me" }
+  | expr DOT ID COLONEQ expr { "fix me" }
   // Simple cases
   | const { $1 }
   | LPARENNOSPACE expr COLON typ RPAREN { EAnnot($2, $4, full_span()) }
@@ -213,12 +217,31 @@ tydecl :
   | TYPE ID EQUAL LPARENNOSPACE startyps RPAREN { TyDecl($2, $5, full_span()) }
   | TYPE ID EQUAL LPARENSPACE startyps RPAREN { TyDecl($2, $5, full_span()) }
 
+classfield :
+  | FIELD ID { "fix me!!" }
+  | METHOD ID LPARENNOSPACE binds RPAREN COLON expr { "fix me!" }
+
+classfields :
+  | { [] }
+  | classfield classfields { $1 :: $2 }
+
+classdecl :
+  | CLASS ID superclass COLON classfields { "fix me!" }
+
+superclass :
+  | { None }
+  | EXTENDS ID { Some $2 }
+
 tydecls :
   | { [] }
   | tydecl tydecls { $1 :: $2 }
 
+classdecls:
+  | { [] }
+  | classdecl classdecls { $1 :: $2 }
+
 program :
-  | tydecls decls expr COLON typ EOF { Program($1, $2, EAnnot($3, $5, tok_span(3, 5)), full_span()) }
-  | tydecls decls expr EOF { Program($1, $2, $3, full_span()) }
+  | tydecls classdecls decls expr COLON typ EOF { Program($1, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
+  | tydecls classdecls decls expr EOF { Program($1, $3, $4, full_span()) }
 
 %%
