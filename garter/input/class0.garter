@@ -2,9 +2,7 @@ class Foo extends Bar:
 	field x
 	field y
 	method f(self):
-		print(" I am here")
-	method b(self, a, b, c):
-		a + b * c
+    a + b * c
 end
 
 def main():
