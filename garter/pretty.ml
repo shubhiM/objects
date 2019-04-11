@@ -149,13 +149,17 @@ let string_of_tydecl_with (print_a : 'a -> string) (td : 'a tydecl) : string =
        (ExtString.String.join ", " (List.map string_of_typ args))
        (print_a a)
 
-   let string_of_method_with (print_a : 'a -> string) (d : 'a decl) : string =
-         match d with
-         | DFun(name, args, _, body, a) ->
-            sprintf "(def %s(self, %s):\n  %s)%s"
-              name
-              (ExtString.String.join ", " (List.map string_of_bind args))
-              (string_of_expr_with print_a body) (print_a a)
+let string_of_method_with (print_a : 'a -> string) (d : 'a decl) : string =
+   match d with
+   | DFun(name, [], _, body, a) ->
+      sprintf "method %s(self):\n  %s %s"
+        name
+        (string_of_expr_with print_a body) (print_a a)
+   | DFun(name, args, _, body, a) ->
+      sprintf "method %s(self, %s):\n  %s %s"
+        name
+        (ExtString.String.join ", " (List.map string_of_bind args))
+        (string_of_expr_with print_a body) (print_a a)
 
 let string_of_method (d : 'a decl) : string =
     string_of_method_with (fun _ -> "") d
@@ -163,21 +167,24 @@ let string_of_method (d : 'a decl) : string =
 let string_of_classfield_with (print_a : 'a -> string) (cf : 'a classfield) : string =
       match cf with
         | Field(bind, pos) -> sprintf "field %s" (string_of_bind bind)
-        | Method(decl, pos) -> (string_of_method decl)
 
 let string_of_classfield (cf : 'a classfield) : string =
           string_of_classfield_with (fun _ -> "") cf
 
  let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : string =
          match cd with
-         | Class(name, basename, classfields, a) ->
-            sprintf "class %s extends %s:\n %s %s"
+         | Class(name, None, classfields, classmethods, a) ->
+            sprintf "class %s:\n\t%s \n\t%s %s\nend"
               name
-              (match  basename with
-                |Some(name) -> name
-                | _ -> "object"
-              )
-              (ExtString.String.join "\n" (List.map string_of_classfield classfields))
+              (ExtString.String.join "\n\t" (List.map string_of_classfield classfields))
+              (ExtString.String.join "\n\t" (List.map string_of_method classmethods))
+              (print_a a)
+         | Class(name, Some(basename), classfields, classmethods, a) ->
+            sprintf "class %s extends %s:\n\t%s \n\t%s %s\nend"
+              name
+              basename
+              (ExtString.String.join "\n\t" (List.map string_of_classfield classfields))
+              (ExtString.String.join "\n\t" (List.map string_of_method classmethods))
               (print_a a)
 
 let string_of_tydecl (td : 'a tydecl) : string =

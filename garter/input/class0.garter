@@ -1,7 +1,9 @@
-class Foo:
+class Foo extends Bar:
 	field x
 	field y
-	def f():
+	method f(self):
 		1
+	method b(self, a, b, c): 
+		a + b * c
 end
 1

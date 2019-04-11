@@ -220,14 +220,39 @@ tydecl :
 
 classfield :
   | FIELD ID { Field((BName($2, TyBlank(full_span()), full_span())), full_span()) }
-  | decl { Method($1, full_span()) }
+  
+classmethod :
+  | METHOD ID LPARENNOSPACE SELF RPAREN COLON expr
+    { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 5 in
+      DFun($2, [], SForall([], TyArr([], TyBlank arg_pos, arg_pos), arg_pos), $7, full_span()) }
+  | METHOD ID LPARENNOSPACE SELF RPAREN THINARROW typ COLON expr
+    {
+      let typ_pos = tok_span(7, 7) in
+      DFun($2, [], SForall([], TyArr([], $7, typ_pos), typ_pos), $9, full_span())  }
+  | METHOD ID LPARENNOSPACE SELF COMMA binds RPAREN COLON expr
+    {
+      let arg_types = List.map bind_to_typ $6 in
+      let typ_pos = tok_span(5, 7) in
+      let arr_typ = SForall([], TyArr(arg_types, TyBlank(typ_pos), typ_pos), typ_pos) in
+      DFun($2, $6, arr_typ, $9, full_span())
+    }
+  | METHOD ID LPARENNOSPACE SELF COMMA binds RPAREN THINARROW typ COLON expr
+    {
+      let arg_types = List.map bind_to_typ $6 in
+      let typ_pos = tok_span(6, 10) in
+      DFun($2, $6, SForall([], TyArr(arg_types, $9, typ_pos), typ_pos), $11, full_span())
+    }
 
 classfields :
   | { [] }
   | classfield classfields { $1 :: $2 }
 
+classmethods :
+  | { [] }
+  | classmethod classmethods { $1 :: $2 }
+
 classdecl :
-  | CLASS ID superclass COLON classfields END { Class($2, $3, $5, full_span()) }
+  | CLASS ID superclass COLON classfields classmethods END { Class($2, $3, $5, $6, full_span()) }
 
 superclass :
   | { None }
