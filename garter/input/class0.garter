@@ -2,7 +2,7 @@ class Foo extends Bar:
 	field x
 	field y
 	method f(self):
-		1
+		print(self)
 	method b(self, a, b, c): 
 		a + b * c
 end

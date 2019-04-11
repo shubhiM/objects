@@ -80,7 +80,6 @@ rule token = parse
   | "new" { NEW }
   | "field" { FIELD }
   | "." { DOT }
-  | "self" { SELF } 
   | tyident as x { TYID x }
   | ident as x { if x = "_" then UNDERSCORE else ID x }
   | eof { EOF }

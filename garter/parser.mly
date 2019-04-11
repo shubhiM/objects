@@ -7,7 +7,7 @@ let tok_span(start, endtok) = (Parsing.rhs_start_pos start, Parsing.rhs_end_pos 
 
 %token <int> NUM
 %token <string> ID TYID
-%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE CLASS METHOD DOT NEW SELF EXTENDS FIELD
+%token DEF ANDDEF ADD1 SUB1 LPARENSPACE LPARENNOSPACE RPAREN LBRACK RBRACK LBRACE RBRACE LET IN OF EQUAL COMMA PLUS MINUS TIMES IF COLON ELSECOLON EOF PRINT PRINTSTACK TRUE FALSE ISBOOL ISNUM ISTUPLE EQEQ LESSSPACE LESSNOSPACE GREATER LESSEQ GREATEREQ AND OR NOT THINARROW COLONEQ SEMI NIL TYPE LAMBDA BEGIN END REC UNDERSCORE CLASS METHOD DOT NEW EXTENDS FIELD
 
 %right SEMI
 %left COLON
@@ -222,25 +222,25 @@ classfield :
   | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
   
 classmethod :
-  | METHOD ID LPARENNOSPACE SELF RPAREN COLON expr
-    { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 5 in
-      DFun($2, [], SForall([], TyArr([], TyBlank arg_pos, arg_pos), arg_pos), $7, full_span()) }
-  | METHOD ID LPARENNOSPACE SELF RPAREN THINARROW typ COLON expr
+  | METHOD ID LPARENNOSPACE RPAREN COLON expr
+    { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 4 in
+      DFun($2, [], SForall([], TyArr([], TyBlank arg_pos, arg_pos), arg_pos), $6, full_span()) }
+  | METHOD ID LPARENNOSPACE RPAREN THINARROW typ COLON expr
     {
-      let typ_pos = tok_span(7, 7) in
-      DFun($2, [], SForall([], TyArr([], $7, typ_pos), typ_pos), $9, full_span())  }
-  | METHOD ID LPARENNOSPACE SELF COMMA binds RPAREN COLON expr
+      let typ_pos = tok_span(6, 6) in
+      DFun($2, [], SForall([], TyArr([], $6, typ_pos), typ_pos), $8, full_span()) }
+  | METHOD ID LPARENNOSPACE binds RPAREN COLON expr
     {
-      let arg_types = List.map bind_to_typ $6 in
-      let typ_pos = tok_span(5, 7) in
+      let arg_types = List.map bind_to_typ $4 in
+      let typ_pos = tok_span(3, 5) in
       let arr_typ = SForall([], TyArr(arg_types, TyBlank(typ_pos), typ_pos), typ_pos) in
-      DFun($2, $6, arr_typ, $9, full_span())
+      DFun($2, $4, arr_typ, $7, full_span())
     }
-  | METHOD ID LPARENNOSPACE SELF COMMA binds RPAREN THINARROW typ COLON expr
+  | METHOD ID LPARENNOSPACE binds RPAREN THINARROW typ COLON expr
     {
-      let arg_types = List.map bind_to_typ $6 in
-      let typ_pos = tok_span(6, 10) in
-      DFun($2, $6, SForall([], TyArr(arg_types, $9, typ_pos), typ_pos), $11, full_span())
+      let arg_types = List.map bind_to_typ $4 in
+      let typ_pos = tok_span(3, 7) in
+      DFun($2, $4, SForall([], TyArr(arg_types, $7, typ_pos), typ_pos), $9, full_span())
     }
 
 classfields :
