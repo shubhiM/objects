@@ -123,15 +123,9 @@ and string_of_expr_with (print_a : 'a -> string) (e : 'a expr) : string =
   | EApp(f, args, a) ->
      sprintf "(%s(%s))%s" (string_of_expr f) (ExtString.String.join ", " (List.map string_of_expr args)) (print_a a)
   | ELambda(binds, body, a) ->
-     (let binds_strs = List.map string_of_bind binds in
+     let binds_strs = List.map string_of_bind binds in
      let binds_str = List.fold_left (^) "" (intersperse binds_strs ", ") in
-     sprintf "(lam(%s) %s)%s" binds_str (string_of_expr body) (print_a a))
-  | EDot(obj, member, a) -> sprintf "%s.%s" (string_of_expr obj) member
-  | EDotSet(obj, member, value, a) ->
-      sprintf "%s.%s := %s" (string_of_expr obj) member (string_of_expr value)
-  | ENew (class_name, a) ->
-      sprintf "new %s() " class_name
-
+     sprintf "(lam(%s) %s)%s" binds_str (string_of_expr body) (print_a a)
 let string_of_expr (e : 'a expr) : string =
   string_of_expr_with (fun _ -> "") e
 

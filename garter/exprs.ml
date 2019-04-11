@@ -46,7 +46,7 @@ and 'a bind =
   | BTuple of 'a bind list * 'a
 
 and 'a binding = ('a bind * 'a expr * 'a)
-
+                               
 and 'a expr =
   | ESeq of 'a expr * 'a expr * 'a
   | ETuple of 'a expr list * 'a
@@ -95,7 +95,7 @@ and 'a cexpr = (* compound expressions *)
   | CTuple of 'a immexpr list * 'a
   | CGetItem of 'a immexpr * int * 'a
   | CSetItem of 'a immexpr * int * 'a immexpr * 'a
-  | CLambda of string list * 'a aexpr * 'a
+  | CLambda of string list * 'a aexpr * 'a                                            
 and 'a aexpr = (* anf expressions *)
   | ASeq of 'a cexpr * 'a aexpr * 'a
   | ALet of string * 'a cexpr * 'a aexpr * 'a
@@ -107,7 +107,7 @@ and 'a adecl =
 and 'a aprogram =
   | AProgram of 'a adecl list * 'a aexpr * 'a
 ;;
-
+                                             
 let rec bind_to_typ bind =
   match bind with
   | BBlank(t, _) -> t
@@ -115,7 +115,7 @@ let rec bind_to_typ bind =
   | BTuple(args, a) -> TyTup(List.map bind_to_typ args, a)
 ;;
 
-
+           
 let rec map_tag_E (f : 'a -> 'b) (e : 'a expr) =
   match e with
   | ESeq(e1, e2, a) -> ESeq(map_tag_E f e1, map_tag_E f e2, f a)
@@ -226,7 +226,7 @@ let tag (p : 'a program) : tag program =
   map_tag_P tag p
 ;;
 
-
+           
 let combine_tags (f1 : 'a -> 'b) (f2 : 'a -> 'c) (p : 'a program) : ('b * 'c) program =
   map_tag_P (fun a -> (f1 a, f2 a)) p
 ;;
@@ -240,7 +240,7 @@ let prog_and_tag (p : 'a program) : ('a * tag) program =
     !next in
   tag_and_map tag p
 ;;
-
+           
 let rec untagP (p : 'a program) : unit program =
   match p with
   | Program(tydecls, classdecls, decls, body, _) ->
