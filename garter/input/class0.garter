@@ -6,4 +6,4 @@ class Foo extends Bar:
 	method b(self, a, b, c): 
 		a + b * c
 end
-1
+let x = new Foo() in x.y := 10

@@ -126,6 +126,11 @@ and string_of_expr_with (print_a : 'a -> string) (e : 'a expr) : string =
      let binds_strs = List.map string_of_bind binds in
      let binds_str = List.fold_left (^) "" (intersperse binds_strs ", ") in
      sprintf "(lam(%s) %s)%s" binds_str (string_of_expr body) (print_a a)
+  | ENew(classname, a) -> sprintf "new %s()" classname
+  | EDot(expr, fieldname, a) -> sprintf "%s.%s" (string_of_expr expr) fieldname
+  | EDotSet(expr1, fieldname, expr2, a) ->
+      sprintf "%s.%s := %s" (string_of_expr expr1) fieldname (string_of_expr expr2)
+
 let string_of_expr (e : 'a expr) : string =
   string_of_expr_with (fun _ -> "") e
 
