@@ -151,12 +151,8 @@ let string_of_tydecl_with (print_a : 'a -> string) (td : 'a tydecl) : string =
 
 let string_of_method_with (print_a : 'a -> string) (d : 'a decl) : string =
    match d with
-   | DFun(name, [], _, body, a) ->
-      sprintf "method %s(self):\n  %s %s"
-        name
-        (string_of_expr_with print_a body) (print_a a)
    | DFun(name, args, _, body, a) ->
-      sprintf "method %s(self, %s):\n  %s %s"
+      sprintf "method %s(%s):\n  %s %s"
         name
         (ExtString.String.join ", " (List.map string_of_bind args))
         (string_of_expr_with print_a body) (print_a a)
