@@ -75,11 +75,8 @@ type 'a decl =
 type 'a tydecl =
   | TyDecl of string * 'a typ list * 'a
 
-type 'a classfield =
-  | Field of 'a bind * 'a
-
 type 'a classdecl = 
-  | Class of string * string option *  'a classfield list * 'a decl list * 'a
+  | Class of string * string option *  'a bind list * 'a decl list * 'a
                                                           
 type 'a program =
   | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a

@@ -219,7 +219,7 @@ tydecl :
   | TYPE ID EQUAL LPARENSPACE startyps RPAREN { TyDecl($2, $5, full_span()) }
 
 classfield :
-  | FIELD ID { Field((BName($2, TyBlank(full_span()), full_span())), full_span()) }
+  | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
   
 classmethod :
   | METHOD ID LPARENNOSPACE SELF RPAREN COLON expr

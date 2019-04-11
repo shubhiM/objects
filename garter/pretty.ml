@@ -164,12 +164,11 @@ let string_of_method_with (print_a : 'a -> string) (d : 'a decl) : string =
 let string_of_method (d : 'a decl) : string =
     string_of_method_with (fun _ -> "") d
 
-let string_of_classfield_with (print_a : 'a -> string) (cf : 'a classfield) : string =
-      match cf with
-        | Field(bind, pos) -> sprintf "field %s" (string_of_bind bind)
+let string_of_classfield_with (print_a : 'a -> string) (field : 'a bind) : string =
+        sprintf "field %s" (string_of_bind field)
 
-let string_of_classfield (cf : 'a classfield) : string =
-          string_of_classfield_with (fun _ -> "") cf
+let string_of_classfield (field : 'a bind) : string =
+          string_of_classfield_with (fun _ -> "") field
 
  let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : string =
          match cd with
