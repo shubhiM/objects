@@ -75,7 +75,7 @@ type 'a decl =
 type 'a tydecl =
   | TyDecl of string * 'a typ list * 'a
 
-type 'a classdecl = 
+type 'a classdecl =
   | Class of string * string option *  'a bind list * 'a decl list * 'a
                                                           
 type 'a program =
