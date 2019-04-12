@@ -171,7 +171,8 @@ let string_of_classfield_with (print_a : 'a -> string) (field : 'a bind) : strin
 let string_of_classfield (field : 'a bind) : string =
           string_of_classfield_with (fun _ -> "") field
 
- let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : string =
+
+let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : string =
          match cd with
          | Class(name, None, classfields, classmethods, a) ->
             sprintf "class %s:\n\t%s \n\t%s %s\nend"
@@ -186,6 +187,7 @@ let string_of_classfield (field : 'a bind) : string =
               (ExtString.String.join "\n\t" (List.map string_of_classfield classfields))
               (ExtString.String.join "\n\t" (List.map string_of_method classmethods))
               (print_a a)
+
 
 let string_of_tydecl (td : 'a tydecl) : string =
   string_of_tydecl_with (fun _ -> "") td
@@ -246,16 +248,53 @@ and string_of_cexpr_with (depth : int) (print_a : 'a -> string) (c : 'a cexpr) :
   | CLambda(args, body, a) ->
      sprintf "(lam(%s) %s)%s" (ExtString.String.join ", " args) (string_of_aexpr body) (print_a a)
   | CImmExpr i -> string_of_immexpr i
+  | CNew(classname, a) -> sprintf "new %s()" classname
+  | CDot(expr, fieldname, a) -> sprintf "%s.%s" (string_of_immexpr expr) fieldname
+  | CDotSet(expr1, fieldname, expr2, a) ->
+      sprintf "%s.%s := %s" (string_of_immexpr expr1) fieldname (string_of_immexpr expr2)
 and string_of_immexpr_with (print_a : 'a -> string) (i : 'a immexpr) : string =
   match i with
   | ImmNil(a) -> "nil" ^ (print_a a)
   | ImmNum(n, a) -> (string_of_int n) ^ (print_a a)
   | ImmBool(b, a) -> (string_of_bool b) ^ (print_a a)
   | ImmId(x, a) -> x ^ (print_a a)
+and string_of_amethod_with (print_a : 'a -> string) (d : 'a adecl) : string =
+       match d with
+       | ADFun(name, args, body, a) ->
+          sprintf "method %s(%s):\n  %s %s"
+            name
+            (ExtString.String.join ", " args)
+            (string_of_aexpr_with 1000 print_a body) (print_a a)
+
+and string_of_aclassfield_with (print_a : 'a -> string) (field : string) : string =
+    sprintf "field %s" field
+
+and string_of_aclassfield (field : string) : string =
+    string_of_aclassfield_with (fun _ -> "") field
+
+and string_of_amethod (d : 'a adecl) : string =
+    string_of_amethod_with (fun _ -> "") d
+
+and string_of_aclassdecl_with (print_a : 'a -> string) (cd : 'a aclassdecl) : string =
+   match cd with
+   | AClass(name, None, classfields, classmethods, a) ->
+      sprintf "class %s:\n\t%s \n\t%s %s\nend"
+        name
+        (ExtString.String.join "\n\t" (List.map string_of_aclassfield classfields))
+        (ExtString.String.join "\n\t" (List.map string_of_amethod classmethods))
+        (print_a a)
+   | AClass(name, Some(basename), classfields, classmethods, a) ->
+      sprintf "class %s extends %s:\n\t%s \n\t%s %s\nend"
+        name
+        basename
+        (ExtString.String.join "\n\t" (List.map string_of_aclassfield classfields))
+        (ExtString.String.join "\n\t" (List.map string_of_amethod classmethods))
+        (print_a a)
 and string_of_aprogram_with (print_a : 'a -> string) (p : 'a aprogram) : string =
   match p with
-  | AProgram(decls, body, a) ->
-     (ExtString.String.join "\n" (List.map (string_of_adecl_with print_a) decls)) ^ "\n"
+  | AProgram(classdecls, decls, body, a) ->
+     (ExtString.String.join "\n" (List.map (string_of_aclassdecl_with print_a) classdecls)) ^ "\n"
+     ^ (ExtString.String.join "\n" (List.map (string_of_adecl_with print_a) decls)) ^ "\n"
      ^ (string_of_aexpr_with 1000 print_a body) ^ "\n" ^ (print_a a)
 and string_of_adecl_with (print_a : 'a -> string) (d : 'a adecl) : string =
   match d with
@@ -269,6 +308,9 @@ let string_of_immexpr (i : 'a immexpr) : string = string_of_immexpr_with (fun _ 
 let string_of_adecl (d : 'a adecl) : string = string_of_adecl_with (fun _ -> "") d
 let string_of_aprogram (p : 'a aprogram) : string = string_of_aprogram_with (fun _ -> "") p
 ;;
+
+
+
 let print_list fmt p_item items p_sep =
   match items with
   | [] -> ()

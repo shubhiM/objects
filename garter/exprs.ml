@@ -46,7 +46,7 @@ and 'a bind =
   | BTuple of 'a bind list * 'a
 
 and 'a binding = ('a bind * 'a expr * 'a)
-                               
+
 and 'a expr =
   | ESeq of 'a expr * 'a expr * 'a
   | ETuple of 'a expr list * 'a
@@ -75,9 +75,9 @@ type 'a decl =
 type 'a tydecl =
   | TyDecl of string * 'a typ list * 'a
 
-type 'a classdecl = 
+type 'a classdecl =
   | Class of string * string option *  'a bind list * 'a decl list * 'a
-                                                          
+
 type 'a program =
   | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a
 
@@ -95,19 +95,26 @@ and 'a cexpr = (* compound expressions *)
   | CTuple of 'a immexpr list * 'a
   | CGetItem of 'a immexpr * int * 'a
   | CSetItem of 'a immexpr * int * 'a immexpr * 'a
-  | CLambda of string list * 'a aexpr * 'a                                            
+  | CLambda of string list * 'a aexpr * 'a
+  | CNew of string * 'a
+  | CDot of 'a immexpr * string * 'a
+  | CDotSet of 'a immexpr * string * 'a immexpr * 'a
 and 'a aexpr = (* anf expressions *)
   | ASeq of 'a cexpr * 'a aexpr * 'a
   | ALet of string * 'a cexpr * 'a aexpr * 'a
   | ALetRec of (string * 'a cexpr) list * 'a aexpr * 'a
   | ACExpr of 'a cexpr
+
 and 'a adecl =
   | ADFun of string * string list * 'a aexpr * 'a
 
+and 'a aclassdecl =
+  | AClass of string * string option *  string list * 'a adecl list * 'a
+
 and 'a aprogram =
-  | AProgram of 'a adecl list * 'a aexpr * 'a
+  | AProgram of 'a aclassdecl list * 'a adecl list * 'a aexpr * 'a
 ;;
-                                             
+
 let rec bind_to_typ bind =
   match bind with
   | BBlank(t, _) -> t
@@ -115,7 +122,7 @@ let rec bind_to_typ bind =
   | BTuple(args, a) -> TyTup(List.map bind_to_typ args, a)
 ;;
 
-           
+
 let rec map_tag_E (f : 'a -> 'b) (e : 'a expr) =
   match e with
   | ESeq(e1, e2, a) -> ESeq(map_tag_E f e1, map_tag_E f e2, f a)
@@ -167,6 +174,13 @@ let rec map_tag_E (f : 'a -> 'b) (e : 'a expr) =
   | ELambda(binds, body, a) ->
      let tag_lam = f a in
      ELambda(List.map (map_tag_B f) binds, map_tag_E f body, tag_lam)
+ | EDot(expr, id, a) ->
+     EDot(map_tag_E f expr, id, f a)
+ | EDotSet(expr, id, new_value, a) ->
+     EDotSet(map_tag_E f expr, id, map_tag_E f new_value, f a)
+ | ENew(class_name, a) ->
+     ENew(class_name, f a)
+
 and map_tag_B (f : 'a -> 'b) b =
   match b with
   | BBlank(t, tag) -> BBlank(map_tag_T f t, f tag)
@@ -226,7 +240,7 @@ let tag (p : 'a program) : tag program =
   map_tag_P tag p
 ;;
 
-           
+
 let combine_tags (f1 : 'a -> 'b) (f2 : 'a -> 'c) (p : 'a program) : ('b * 'c) program =
   map_tag_P (fun a -> (f1 a, f2 a)) p
 ;;
@@ -240,11 +254,15 @@ let prog_and_tag (p : 'a program) : ('a * tag) program =
     !next in
   tag_and_map tag p
 ;;
-           
+
 let rec untagP (p : 'a program) : unit program =
   match p with
   | Program(tydecls, classdecls, decls, body, _) ->
-     Program(List.map untagTD tydecls, [](*TODO*) ,List.map (fun group -> List.map untagD group) decls, untagE body, ())
+     Program(List.map untagTD tydecls, List.map untagClass classdecls ,List.map (fun group -> List.map untagD group) decls, untagE body, ())
+and untagClass c =
+  match c with
+  | Class(name, basename, fields, methods, _) ->
+       Class(name, basename, fields, List.map untagD methods, ())
 and untagE e =
   match e with
   | ESeq(e1, e2, _) -> ESeq(untagE e1, untagE e2, ())
@@ -270,6 +288,12 @@ and untagE e =
      EApp(untagE name, List.map untagE args, ())
   | ELambda(binds, body, _) ->
      ELambda(List.map untagB binds, untagE body, ())
+  | EDot(expr, id, _) ->
+      EDot(untagE expr, id, ())
+  | EDotSet(expr, id, new_value, _) ->
+      EDotSet(untagE expr, id, untagE new_value, ())
+  | ENew(class_name, _) ->
+      ENew(class_name, ())
 and untagB b =
   match b with
   | BBlank(typ, _) -> BBlank(untagT typ, ())
@@ -339,6 +363,15 @@ let atag (p : 'a aprogram) : tag aprogram =
     | CLambda(args, body, _) ->
        let lam_tag = tag() in
        CLambda(args, helpA body, lam_tag)
+    | CDot(expr, id, _) ->
+       let dot_tag = tag() in
+       CDot(helpI expr, id, dot_tag)
+    | CDotSet(expr, id, new_value, _) ->
+      let dot_set_tag = tag() in
+      CDotSet(helpI expr, id, helpI new_value, dot_set_tag)
+    | CNew(class_name, _) ->
+      let new_class_tag = tag() in
+      CNew(class_name, new_class_tag)
   and helpI (i : 'a immexpr) : tag immexpr =
     match i with
     | ImmNil(_) -> ImmNil(tag())
@@ -350,8 +383,13 @@ let atag (p : 'a aprogram) : tag aprogram =
     | ADFun(name, args, body, _) ->
        let fun_tag = tag() in
        ADFun(name, args, helpA body, fun_tag)
+  and helpClass c =
+    match c with
+    | AClass(name, basename, fields, methods, _) ->
+       let class_tag = tag() in
+       AClass(name, basename, fields, List.map helpD methods, class_tag)
   and helpP p =
     match p with
-    | AProgram(decls, body, _) ->
-       AProgram(List.map helpD decls, helpA body, 0)
+    | AProgram(classdecls, decls, body, _) ->
+       AProgram(List.map helpClass classdecls, List.map helpD decls, helpA body, 0)
   in helpP p
