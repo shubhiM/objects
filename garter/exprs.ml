@@ -223,14 +223,19 @@ and map_tag_TD (f : 'a -> 'b) td =
   | TyDecl(name, args, a) ->
      let tag_a = f a in
      TyDecl(name, List.map (map_tag_T f) args, tag_a)
+and map_tag_K (f : 'a -> 'b) cl =
+  match cl with
+  | Class(name, base, fields, decls, a) ->
+    Class(name, base, List.map (map_tag_B f) fields, List.map (map_tag_D f) decls, f a)
 and map_tag_P (f : 'a -> 'b) p =
   match p with
   | Program(tydecls, classdecls, declgroups, body, a) ->
      let tag_a = f a in
      let tag_tydecls = List.map (map_tag_TD f) tydecls in
+     let tag_classdecls = List.map (map_tag_K f) classdecls in
      let tag_decls = List.map (fun group -> List.map (map_tag_D f) group) declgroups in
      let tag_body = map_tag_E f body in
-     Program(tag_tydecls, [](* TODO *) ,tag_decls, tag_body, tag_a)
+     Program(tag_tydecls, tag_classdecls ,tag_decls, tag_body, tag_a)
 
 let tag (p : 'a program) : tag program =
   let next = ref 0 in

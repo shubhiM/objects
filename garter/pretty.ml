@@ -471,11 +471,11 @@ let rec format_expr (fmt : Format.formatter) (print_a : 'a -> string) (e : 'a ex
      pp_print_string fmt ":"; pp_print_space fmt ();
      help body;
      close_paren fmt
-  | ENew(x, a) ->  
+  | ENew(x, a) ->
      open_label fmt "ENew" (print_a a);
      pp_print_string fmt (quote x);
      close_paren fmt
-  | EDot(e, idx, a) -> 
+  | EDot(e, idx, a) ->
      open_label fmt "EDot" (print_a a);
      help e; print_comma_sep fmt; pp_print_string fmt idx;
      close_paren fmt
@@ -525,10 +525,24 @@ let format_tydecl (fmt : Format.formatter) (print_a : 'a -> string) (td : 'a tyd
      close_paren fmt;
      close_paren fmt
 ;;
+let format_classdecl (fmt : Format.formatter) (print_a : 'a -> string) (cl : 'a classdecl) : unit =
+  match cl with
+  | Class(name, base, binds, decls, a) ->
+    open_label fmt "Class" (print_a a);
+    pp_print_string fmt ("Name: " ^ name);
+    let () = begin match base with
+    | Some(basename) -> pp_print_string fmt ("Base: " ^ basename); ()
+    | None -> ()
+    end
+    in
+    (* TODO: print binds*)
+    print_list fmt (fun fmt -> format_decl fmt print_a) decls (fun fmt -> pp_print_break fmt 1 0);
+;;
 let format_program (fmt : Format.formatter) (print_a : 'a -> string) (p : 'a program) : unit =
   match p with
-  | Program(tydecls, classdecls(*TODO*), decls, body, a) ->
+  | Program(tydecls, classdecls, decls, body, a) ->
      print_list fmt (fun fmt -> format_tydecl fmt print_a) tydecls (fun fmt -> pp_print_break fmt 1 0);
+     print_list fmt (fun fmt -> format_classdecl fmt print_a) classdecls (fun fmt -> pp_print_break fmt 1 0);
      print_list fmt (fun fmt -> format_declgroup fmt print_a) decls (fun fmt -> pp_print_break fmt 1 0);
      pp_print_break fmt 1 0;
      format_expr fmt print_a body

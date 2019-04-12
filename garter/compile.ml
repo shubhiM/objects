@@ -226,8 +226,13 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
 let rename_and_tag (p : tag program) : tag program =
   let rec rename env p =
     match p with
-    | Program(tydecls, classdecls(*TODO*), decls, body, tag) ->
-       Program(tydecls, [], List.map (fun g -> List.map (helpD env) g) decls, helpE env body, tag)
+    | Program(tydecls, classdecls, decls, body, tag) ->
+       Program(tydecls, List.map (helpK env) classdecls,
+               List.map (fun g -> List.map (helpD env) g) decls, helpE env body, tag)
+  and helpK env c =
+    match c with
+    | Class(name, base, fields, methods, tag) ->
+      Class(name, base, fields, List.map (helpD env) methods, tag)
   and helpD env decl =
     match decl with
     | DFun(name, args, scheme, body, tag) ->
@@ -313,8 +318,8 @@ let defn_to_letrec (p : 'a program) : 'a program =
          (BName(name, instantiate scheme, tag), ELambda(args, body, tag), tag) in
     ELetRec(List.map decl_to_binding decls, body, tag) in
   match p with
-  | Program(tydecls, classdecls(*TODO*), declgroups, body, tag) ->
-     Program(tydecls, [], [], wrap declgroups body tag, tag)
+  | Program(tydecls, classdecls, declgroups, body, tag) ->
+     Program(tydecls, classdecls, [], wrap declgroups body tag, tag)
 
 let desugar_bindings (p : sourcespan program) : sourcespan program =
   let gensym =
@@ -616,8 +621,6 @@ let anf (p : tag program) : unit aprogram =
   in
   helpP p
 ;;
-
-
 
 
 let free_vars_E (e : 'a aexpr) (rec_binds : string list) : string list =
