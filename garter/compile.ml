@@ -647,6 +647,9 @@ let free_vars_E (e : 'a aexpr) (rec_binds : string list) : string list =
     | CGetItem(tup, _, _) -> helpI bound tup
     | CSetItem(tup, _, rhs, _) -> helpI bound tup @ helpI bound rhs
     | CImmExpr i -> helpI bound i
+    | CDot(expr, idx, _) -> helpI bound expr
+    | CDotSet(expr, idx, newval, _) -> helpI bound expr @ helpI bound newval
+    | CNew(_, _) -> []
   and helpI (bound : string list) (e : 'a immexpr) : string list =
     match e with
     | ImmId(name, _) ->

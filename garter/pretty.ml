@@ -471,6 +471,19 @@ let rec format_expr (fmt : Format.formatter) (print_a : 'a -> string) (e : 'a ex
      pp_print_string fmt ":"; pp_print_space fmt ();
      help body;
      close_paren fmt
+  | ENew(x, a) ->  
+     open_label fmt "ENew" (print_a a);
+     pp_print_string fmt (quote x);
+     close_paren fmt
+  | EDot(e, idx, a) -> 
+     open_label fmt "EDot" (print_a a);
+     help e; print_comma_sep fmt; pp_print_string fmt idx;
+     close_paren fmt
+  | EDotSet(e, idx, newval, a) ->
+     open_label fmt "EDotSet" (print_a a);
+     help e; print_comma_sep fmt; pp_print_string fmt idx; pp_print_string fmt " := "; help newval;
+     close_paren fmt
+
 ;;
 let format_scheme (fmt : Format.formatter) (print_a : 'a -> string) (s : 'a scheme) : unit =
   match s with
