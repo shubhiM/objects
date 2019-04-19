@@ -98,7 +98,12 @@ simple_expr :
   | binop_expr LPARENNOSPACE RPAREN { EApp($1, [], full_span()) }
   // object cases
   | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
+  // e dot field access
   | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
+  // e dot applications
+  | binop_expr DOT ID LPARENNOSPACE exprs RPAREN { EDotApp($1, $3, $5, full_span()) }
+  | binop_expr DOT ID LPARENNOSPACE RPAREN { EDotApp($1, $3, [], full_span()) }
+  // e dot field mutations
   | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
   // Simple cases
   | const { $1 }
@@ -220,7 +225,7 @@ tydecl :
 
 classfield :
   | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
-  
+
 classmethod :
   | METHOD ID LPARENNOSPACE RPAREN COLON expr
     { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 4 in

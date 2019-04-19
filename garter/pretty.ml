@@ -128,6 +128,8 @@ and string_of_expr_with (print_a : 'a -> string) (e : 'a expr) : string =
      sprintf "(lam(%s) %s)%s" binds_str (string_of_expr body) (print_a a)
   | ENew(classname, a) -> sprintf "new %s()" classname
   | EDot(expr, fieldname, a) -> sprintf "%s.%s" (string_of_expr expr) fieldname
+  | EDotApp(expr, methodname, args, a) ->
+    sprintf "%s.%s(%s)" (string_of_expr expr) methodname (ExtString.String.join ", " (List.map string_of_expr args))
   | EDotSet(expr1, fieldname, expr2, a) ->
       sprintf "%s.%s := %s" (string_of_expr expr1) fieldname (string_of_expr expr2)
 

@@ -64,10 +64,10 @@ and 'a expr =
   | EApp of 'a expr * 'a expr list * 'a
   | ELambda of 'a bind list * 'a expr * 'a
   | EAnnot of 'a expr * 'a typ * 'a
-  | EDot of 'a expr * string * 'a
-  | EDotSet of 'a expr * string * 'a expr * 'a
+  | EDot of 'a expr * string * 'a (* Accessing field on a class object *)
+  | EDotApp of 'a expr * string * 'a expr list * 'a (* Calling method from a class object x.foo() x.foo(1, 2, 3) *)
+  | EDotSet of 'a expr * string * 'a expr * 'a (* Mutating fields on a class object *)
   | ENew of string * 'a
-
 
 type 'a decl =
   | DFun of string * 'a bind list * 'a scheme * 'a expr * 'a
