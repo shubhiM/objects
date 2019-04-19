@@ -6,4 +6,8 @@ class Foo extends Bar:
 	method b(self, a, b, c):
 		a + b * c
 end
-let x = new Foo() in x.b(1,2,3)
+
+def add(a, b):
+    a + b
+
+let x = new Foo() in x.b(1,2,3) + add(1, 2)
