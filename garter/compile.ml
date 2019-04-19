@@ -1516,8 +1516,7 @@ err_nil_deref:%s
      let native_lambdas = List.mapi native_to_lambda initial_env in
      let initial_env = List.map (fun (name, slot, _) -> (name, slot)) native_lambdas in
 
-     (* TODO: compile classes *)
-
+     (* first we compile the classes so, we can store the class descriptors on the heap *)
      let comp_classdecls = List.map (fun cls -> (compile_class cls 0 initial_env)) classdecls in
 
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in
