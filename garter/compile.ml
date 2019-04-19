@@ -663,6 +663,7 @@ let free_vars_E (e : 'a aexpr) (rec_binds : string list) : string list =
     | CSetItem(tup, _, rhs, _) -> helpI bound tup @ helpI bound rhs
     | CImmExpr i -> helpI bound i
     | CDot(expr, idx, _) -> helpI bound expr
+    | CDotApp(expr, idx, args, _) -> helpI bound expr @ (List.flatten (List.map (fun arg -> helpI bound arg) args))
     | CDotSet(expr, idx, newval, _) -> helpI bound expr @ helpI bound newval
     | CNew(_, _) -> []
   and helpI (bound : string list) (e : 'a immexpr) : string list =
@@ -1058,6 +1059,18 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
      | EqB -> failwith "compile_cexpr: EqB not implemented"
      end
   | CImmExpr(immexpr) -> [ IMov(Reg(EAX), compile_imm immexpr env) ]
+  | CDot(immexpr, field_name, tag) ->
+      (* TODO: "CDot To Be Implemented" *)
+     []
+  | CDotApp(immexpr, method_name, immexprs, tag) ->
+      (* TODO: "CDotApp To Be Implemented" *)
+     []
+  | CDotSet(immexpr1, field_name, immexpr2, tag) ->
+      (* TODO: "CDotSet To Be Implemented" *)
+      []
+  | CNew(class_name, tag) ->
+      (* TODO: "CNewTo Be Implemented" *)
+    []
   | CTuple(immexprs, tag) ->
   (*
     The header stores the number of elements in the tuple. The value is not tagged.
@@ -1269,6 +1282,157 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
           IAdd(Reg(ESP), Const(num_of_args * word_size));
         ]
   *)
+
+and  native_to_lambda i (name, arity) =
+  let f_name = sprintf "f_%s" name in
+  let lambda_label = sprintf "%s" f_name in (* must be the same as in compile_fun *)
+
+  (* Creat the closure in heap *)
+
+  (* call try_gc *)
+  (* int* try_gc(int* alloc_ptr, int bytes_needed, int* cur_frame, int* cur_stack_top) *)
+  let gc_instr =
+         [ (* call try_gc *)
+           ILineComment("calling try_gc function");
+           IPush(Sized(DWORD_PTR, Reg(ESP)));
+           IPush(Sized(DWORD_PTR, Reg(EBP)));
+           IPush(Sized(DWORD_PTR, Const(word_size * 2)));
+           IPush(Sized(DWORD_PTR, Reg(ESI)));
+           ICall(Label("try_gc"));
+           IAdd(Reg(ESP), Const(word_size * 4));
+           (* try_gc returns the new heap top, store the value in ESI *)
+           IMov(Reg(ESI), Reg(EAX));
+        ]
+  in
+  (* position of the lambda ptr on stack *)
+  let slot = RegOffset((word_size * -i), ESP) in
+  let closure_setup =
+    [ ILineComment(sprintf "-----start of creating 'native_to_lambda' closure %s in heap-----" lambda_label ) ]
+         (* gc *)
+    @ gc_instr
+         (* arity *)
+    @ [ IMov(RegOffset((word_size * 0), ESI), Sized(DWORD_PTR, Const(arity lsl 1))) ]
+         (* code-pointer *)
+    @ [ IMov(RegOffset((word_size * 1), ESI), Sized(DWORD_PTR, Label(lambda_label))) ]
+         (* number of free variables *)
+    @ [ IMov(RegOffset((word_size * 2), ESI), Sized(DWORD_PTR, Const(0))) ]
+         (* creates the closure value *)
+    @ [ ILineComment(sprintf "closure %s create at heap" lambda_label);
+         (* save the position of the closure to EAX *)
+           IMov(Reg(EAX), Reg(ESI));
+           IAdd(Reg(EAX), HexConst(0x5)); (* tag the closure *)
+           IMov(slot, Reg(EAX)); (* Save the value onto the stack *)
+         ]
+     @ [ ILineComment(sprintf "-----end of creating 'native_to_lambda' closure %s in heap-----" lambda_label ) ]
+  in
+  (lambda_label, slot, closure_setup)
+
+and compile_class (c : tag aclassdecl) i env : instruction list =
+(*
+  The header stores the number of elements in the tuple. The value is not tagged.
+(4 bytes)    (4 bytes)      (4 bytes)  (4 bytes) (4 bytes)
+--------------------------------------------------------
+| # 5 | pointer_to_base | method_1 | method_2 | method_3 |
+--------------------------------------------------------
+*)
+  match c with
+  | AClass(class_name, base, field_names, methods, tag) ->
+    let comp_methods = List.fold_left
+      (fun (instr : instruction list) decl ->
+          match decl with
+            | ADFun(f_name, args, body, _) ->
+              let (prologue, main, epilogue) = (compile_fun f_name args body env) in
+              instr @ [ILineComment(sprintf "Method %s.%s" class_name f_name)] @ prologue @ main @ epilogue
+     )
+     []
+     methods
+     in
+    let method_env = List.map
+    (fun decl ->
+         match decl with
+          | ADFun(name, args, body, _) -> (name, List.length args)
+    )
+    methods
+    in
+
+    (* method_lambdas is a list of (lambda_name, stack_slot_with_lambda_pointer, lambda_descriptor) *)
+    let method_lambdas = List.mapi native_to_lambda method_env in
+
+    (* method_env is a list of (lambda_name, stack_slot_with_lambda_pointer)*)
+    let names_and_pointers = List.map (fun (name, slot, _) -> (name, slot)) method_lambdas in
+
+    (* comp_lambdas is a list of lambda_descriptors *)
+    let comp_lambdas = List.map (fun (_, _, code) -> code) method_lambdas in
+
+    let size = List.length methods + 2 in
+
+    (* compile the class descriptor *)
+    (* call try_gc *)
+    (* int* try_gc(int* alloc_ptr, int bytes_needed, int* cur_frame, int* cur_stack_top) *)
+    let gc_instr =
+      [ (* call try_gc *)
+        ILineComment("calling try_gc function");
+        IPush(Sized(DWORD_PTR, Reg(ESP)));
+        IPush(Sized(DWORD_PTR, Reg(EBP)));
+        IPush(Sized(DWORD_PTR, Const(word_size * size)));
+        IPush(Sized(DWORD_PTR, Reg(ESI)));
+        ICall(Label("try_gc"));
+        IAdd(Reg(ESP), Const(word_size * 4));
+        (* try_gc returns the new heap top, store the value in ESI *)
+        IMov(Reg(ESI), Reg(EAX));
+      ]
+    in
+
+    (* Add this class descriptor pointer to the given stack slot *)
+    let slot = RegOffset((word_size * -i), ESP) in
+
+    (* store the size of the class descriptor *)
+
+    let header_instr =
+    (* Use the last bit of size to indicate whether it is forwarding *)
+      [ IMov(RegOffset(0, ESI), Sized(DWORD_PTR, Const(size lsl 1))) ]
+    in
+
+    (* move lambda pointer to class descriptor on heap *)
+    let (_, mov_instr) = List.fold_left (fun (index, inst) (lambda_name, lambda_pointer) ->
+        let instr_for_method =
+          [ILineComment("Adding %s lambda pointer for % class");
+          IMov(RegOffset((word_size * index), ESI), lambda_pointer)]
+        in
+        (index + 1, inst @ instr_for_method))
+    (2, [])
+    names_and_pointers
+    in
+
+    let class_instr =
+      [[ ILineComment(sprintf "Methods of class %s" (string_of_aclassdecl c))];
+        comp_methods;
+       [ ILineComment(sprintf "creating class descriptor  %s" (string_of_aclassdecl c)) ];
+        gc_instr ;
+        header_instr ;
+        mov_instr ;
+        [
+           IMov(Reg(EAX), Reg(ESI));
+           IAdd(Reg(EAX), HexConst(0x1)); (* tag the class descriptor *)
+           IMov(slot, Reg(EAX)) (* TODO: V tables cannot be stored on stack so you need to fix that *)
+         ];
+      ]
+      in
+
+      let class_instr =
+        [ ILineComment(sprintf "Methods of class %s" (string_of_aclassdecl c)) ]
+        @ comp_methods;
+        [ ILineComment(sprintf "creating class descriptor  %s" (string_of_aclassdecl c))]
+        @ gc_instr
+        @ header_instr
+        @ mov_instr
+        @  [
+             IMov(Reg(EAX), Reg(ESI));
+             IAdd(Reg(EAX), HexConst(0x1)); (* tag the class descriptor *)
+             IMov(slot, Reg(EAX)) (* TODO: V tables cannot be stored on stack so you need to fix that *)
+           ]
+      in
+    class_instr
 ;;
 
 let native_call (label : arg) args =
@@ -1296,10 +1460,10 @@ let call (label : arg) args =
   setup @ [ ICall(label) ] @ teardown
 ;;
 
-(* Copy this from Fer-de-lance *)
-let native_to_lambda i (name, arity) =
-  raise (NotYetImplemented "Develop a wrapper that acts like a lambda and calls a native function")
-
+(* native_to_lambda:
+      given a stack offset and a pair of function name and arity
+      returns (name, slot, code)
+*)
 
 let compile_prog anfed =
   let prelude =
@@ -1349,9 +1513,13 @@ err_nil_deref:%s
   in
   match anfed with
   | AProgram(classdecls, decls, body, _) ->
-     (* TODO: Add logic for compilation of decls *)
      let native_lambdas = List.mapi native_to_lambda initial_env in
      let initial_env = List.map (fun (name, slot, _) -> (name, slot)) native_lambdas in
+
+     (* TODO: compile classes *)
+
+     let comp_classdecls = List.map (fun cls -> (compile_class cls 0 initial_env)) classdecls in
+
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in
   (* $heap is a mock parameter name, just so that compile_fun knows our_code_starts_here takes in 1 parameter *)
      let (prologue, comp_main, epilogue) = compile_fun "our_code_starts_here" ["$heap"] body initial_env in
@@ -1367,7 +1535,7 @@ err_nil_deref:%s
         (* Then round back down *)
         IInstrComment(IAnd(Reg(ESI), HexConst(0xFFFFFFF8)), "by adding no more than 7 to it")
        ] in
-     let main = (prologue @ heap_start @ List.flatten comp_decls @ comp_main @ epilogue) in
+     let main = (prologue @ heap_start @ (List.flatten comp_classdecls) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
      sprintf "%s%s%s\n" prelude (to_asm main) suffix
 
 

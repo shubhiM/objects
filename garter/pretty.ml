@@ -295,6 +295,9 @@ and string_of_aclassdecl_with (print_a : 'a -> string) (cd : 'a aclassdecl) : st
         (ExtString.String.join "\n\t" (List.map string_of_aclassfield classfields))
         (ExtString.String.join "\n\t" (List.map string_of_amethod classmethods))
         (print_a a)
+and string_of_aclassdecl (cd : 'a aclassdecl) : string =
+    string_of_aclassdecl_with (fun _ -> "") cd
+
 and string_of_aprogram_with (print_a : 'a -> string) (p : 'a aprogram) : string =
   match p with
   | AProgram(classdecls, decls, body, a) ->
