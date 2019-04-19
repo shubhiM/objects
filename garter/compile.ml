@@ -142,7 +142,7 @@ let is_well_formed (p : sourcespan program) : (sourcespan program) fallible =
     | EApp(fn, args, loc) ->
        wf_E fn env tyenv @ List.concat (List.map (fun e -> wf_E e env tyenv) args)
     | ELambda(binds, body, loc) -> [(* TODO *)] (* raise (NotYetImplemented "Finish well-formedness for ELambda") *)
-    | ENew _ | EDot _  | EDotSet _ -> [(* TODO *)]
+    | ENew _ | EDot _  |EDotApp _ | EDotSet _  -> [(* TODO *)]
   and wf_D d (env : sourcespan envt) (tyenv : StringSet.t) =
     match d with
     | DFun(fn, args, typ, body, loc) ->
@@ -296,6 +296,8 @@ let rename_and_tag (p : tag program) : tag program =
        ELambda(binds', body', tag)
    | EDot(expr, id, tag) ->
        EDot(helpE env expr, id, tag)
+   | EDotApp(expr, id, args, tag) ->
+           EDotApp(helpE env expr, id, (List.map (fun arg -> (helpE env arg)) args),  tag)
    | EDotSet(expr, id, new_value, tag) ->
        EDotSet(helpE env expr, id, helpE env new_value, tag)
    | ENew(class_name, tag) ->
@@ -414,6 +416,7 @@ let desugar_bindings (p : sourcespan program) : sourcespan program =
        ELambda(newargs, helpE newbody, tag)
    | ENew _ -> e
    | EDot(expr, idx, tag) -> EDot(helpE expr, idx, tag)
+   | EDotApp(expr, idx, args, tag) -> EDotApp(helpE expr, idx, List.map helpE args, tag)
    | EDotSet(expr, idx, newval, tag) -> EDotSet(helpE expr, idx, helpE newval, tag)
   in helpP p
 ;;
@@ -513,6 +516,10 @@ let anf (p : tag program) : unit aprogram =
     |EDot(expr, id, tag) ->
       let (expr_imm, expr_setup) = helpI expr in
       (CDot(expr_imm, id, ()), expr_setup)
+    |EDotApp(expr, id, args,  tag) ->
+        let (expr_imm, expr_setup) = helpI expr in
+        let (new_args, new_setup) = List.split (List.map helpI args) in
+        (CDotApp(expr_imm, id, new_args, ()), expr_setup @ List.concat new_setup)
     |EDotSet(expr, id, new_val, tag) ->
       let (expr_imm, expr_setup) = helpI expr in
       let (new_imm, new_setup) = helpI new_val in
@@ -531,6 +538,11 @@ let anf (p : tag program) : unit aprogram =
       let tmp = sprintf "dot_%d" tag in
       let (expr_imm, expr_setup) = helpI expr in
       (ImmId(tmp, ()), expr_setup @ [BLet(tmp, CDot(expr_imm, id, ()))])
+    | EDotApp(expr, id, args, tag) ->
+        let tmp = sprintf "dotapp_%d" tag in
+        let (expr_imm, expr_setup) = helpI expr in
+        let (new_args, new_setup) = List.split (List.map helpI args) in
+        (ImmId(tmp, ()), expr_setup @ (List.concat new_setup) @ [BLet(tmp, CDotApp(expr_imm, id, new_args, ()))])
     | EDotSet(expr, id, new_val, tag) ->
       let tmp = sprintf "dotset_%d" tag in
       let (expr_imm, expr_setup) = helpI expr in
@@ -1337,6 +1349,7 @@ err_nil_deref:%s
   in
   match anfed with
   | AProgram(classdecls, decls, body, _) ->
+     (* TODO: Add logic for compilation of decls *)
      let native_lambdas = List.mapi native_to_lambda initial_env in
      let initial_env = List.map (fun (name, slot, _) -> (name, slot)) native_lambdas in
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in

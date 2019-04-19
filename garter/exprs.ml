@@ -98,6 +98,7 @@ and 'a cexpr = (* compound expressions *)
   | CLambda of string list * 'a aexpr * 'a
   | CNew of string * 'a
   | CDot of 'a immexpr * string * 'a
+  | CDotApp of 'a immexpr * string * 'a immexpr list * 'a
   | CDotSet of 'a immexpr * string * 'a immexpr * 'a
 and 'a aexpr = (* anf expressions *)
   | ASeq of 'a cexpr * 'a aexpr * 'a
@@ -176,6 +177,8 @@ let rec map_tag_E (f : 'a -> 'b) (e : 'a expr) =
      ELambda(List.map (map_tag_B f) binds, map_tag_E f body, tag_lam)
  | EDot(expr, id, a) ->
      EDot(map_tag_E f expr, id, f a)
+ | EDotApp(expr, id, args, a) ->
+     EDotApp(map_tag_E f expr, id, (List.map (fun arg -> (map_tag_E f arg)) args),  f a)
  | EDotSet(expr, id, new_value, a) ->
      EDotSet(map_tag_E f expr, id, map_tag_E f new_value, f a)
  | ENew(class_name, a) ->
@@ -295,6 +298,8 @@ and untagE e =
      ELambda(List.map untagB binds, untagE body, ())
   | EDot(expr, id, _) ->
       EDot(untagE expr, id, ())
+  | EDotApp(expr, id, args, a) ->
+      EDotApp(untagE expr, id, (List.map untagE args), ())
   | EDotSet(expr, id, new_value, _) ->
       EDotSet(untagE expr, id, untagE new_value, ())
   | ENew(class_name, _) ->
@@ -371,6 +376,9 @@ let atag (p : 'a aprogram) : tag aprogram =
     | CDot(expr, id, _) ->
        let dot_tag = tag() in
        CDot(helpI expr, id, dot_tag)
+    | CDotApp(expr, id, args,  _) ->
+        let dotapp_tag = tag() in
+        CDotApp(helpI expr, id, List.map helpI args, dotapp_tag)
     | CDotSet(expr, id, new_value, _) ->
       let dot_set_tag = tag() in
       CDotSet(helpI expr, id, helpI new_value, dot_set_tag)

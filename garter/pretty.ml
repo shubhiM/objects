@@ -252,6 +252,9 @@ and string_of_cexpr_with (depth : int) (print_a : 'a -> string) (c : 'a cexpr) :
   | CImmExpr i -> string_of_immexpr i
   | CNew(classname, a) -> sprintf "new %s()" classname
   | CDot(expr, fieldname, a) -> sprintf "%s.%s" (string_of_immexpr expr) fieldname
+  | CDotApp(expr, methodname, args, a) ->
+    sprintf "(%s.%s(%s))%s" (string_of_immexpr expr) methodname
+     (ExtString.String.join ", " (List.map string_of_immexpr args)) (print_a a)
   | CDotSet(expr1, fieldname, expr2, a) ->
       sprintf "%s.%s := %s" (string_of_immexpr expr1) fieldname (string_of_immexpr expr2)
 and string_of_immexpr_with (print_a : 'a -> string) (i : 'a immexpr) : string =
@@ -481,6 +484,13 @@ let rec format_expr (fmt : Format.formatter) (print_a : 'a -> string) (e : 'a ex
      open_label fmt "EDot" (print_a a);
      help e; print_comma_sep fmt; pp_print_string fmt idx;
      close_paren fmt
+  | EDotApp(e, idx, args,  a) ->
+        open_label fmt "EDotApp" (print_a a);
+        help e;
+        print_comma_sep fmt;
+        pp_print_string fmt idx;
+        print_list fmt (fun fmt -> format_expr fmt print_a) args print_comma_sep;
+        close_paren fmt
   | EDotSet(e, idx, newval, a) ->
      open_label fmt "EDotSet" (print_a a);
      help e; print_comma_sep fmt; pp_print_string fmt idx; pp_print_string fmt " := "; help newval;
