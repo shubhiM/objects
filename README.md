@@ -268,18 +268,64 @@ changes in the parser, addition of new forms
                  | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a
 
 #### Well formedness:
-             1. extends <IDENTIFIER> where IDENTIFIER is a class.
+             1. extends <IDENTIFIER> where IDENTIFIER needs to exist.
              2. Method names should be unique
              3. Method argument ids should be unique
              4. first argument to a method must be 'self'
              5. Field names should be unique
-             6. self is keyword
              7. new is a keyword
-             8. <IDENTIFIER> . <IDENTIFIER> , before . should be a class and after . should be a field in class
-             9. <IDENTIFIER> . <IDENTIFIER> (x, y, z) before . should be a class and after . should be a method in class with same arity
-            10: <IDENTIFIER> . <IDENTIFIER> := <something> mutation is only possible for class fields.
+             8. <IDENTIFIER> . <IDENTIFIER> , both identifiers should be in scope.
+             9. <IDENTIFIER> . <IDENTIFIER> (x, y, z)  identifiers should be in scope and function arity should be correct.
+            10: <IDENTIFIER> . <IDENTIFIER> := <something> both indentifiers should be in scope.
             
-#### Type system : Not going to be implemented for the purpose of the project.
+#### Type system : New type is introduced TyClass which will get instantiated for each class definition. Thus, each class is a new custom type.
+
+ 1. TyClass will get created for each class definition. TyClass(field_types, method_types, pos) where field_types and         method_types are both 'a bind list.
+        
+         | TyClass of 'a bind list * 'a bind list * 'a 
+       
+   Example: TyClass for Point2D class introduced above.
+                 
+                 field_types_2D = [BName(x, TyCon(int, pos), pos);
+                                   BName(y, TyCon(int, pos), pos)]
+                 
+                 nothing_to_int =  TyArr([TyBlank(pos)], TyCon(int, pos), pos)
+                 
+                 method_types_2D = [BName(get_x, nothing_to_int , pos); 
+                                    BName(get_y, nothing_to_int, pos)]
+                 
+                 class  ----> class Type
+                 Point2D  -> TyClass(field_types_2D, method_types_2D, pos)
+        
+   
+   Example: TyClass for Point3D class introduced above. Takes into account inheritance.
+                
+                 field_types_3D = [BName(x, TyCon(int, pos), pos);
+                                BName(y, TyCon(int, pos), pos); 
+                                BName(z, TyCon(int, pos), pos)]
+                 
+                 nothing_to_int = TyArr([TyBlank(pos)], TyCon(int, pos), pos)
+                 
+                 int_to_class =  TyArr([TyCon(int, pos)], Point2D , pos)
+                 
+                 method_types_3D = [BName(get_x, nothing_to_int , pos); 
+                                 BName(get_y, nothing_to_int, pos); 
+                                 BName(get_z, nothing_to_int, pos);
+                                 BName(set_x, int_to_class , pos);
+                                 BName(set_y, int_to_class , pos);
+                                 BName(set_z, int_to_class , pos)]
+                 
+                 TyClass(field_types_3D, method_types_3D, pos)
+   
+  ###### Note** : In case of inheritance, base class fields and methods come before the sub class fields and methods in TyClass definition. This is of great significance later.
+                
+ 
+2. create a class_type_env which is a mapping of class name to its type and pass it to all the program decl groups and also subsequent expressions and even the main expression. 
+
+3. Change infer_expr to add type inference for four new forms
+            
+                  
+
 
 #### Tagging : 
 
