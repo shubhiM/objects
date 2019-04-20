@@ -15,6 +15,7 @@ In this project, we are going to add object oriented features to an existing com
     6. Inheritance - single and multilevel
     7. Overriding
     
+    
 ### Grammer: 
 The following are the changes in the grammer. We introduce new grammer for defining classes i.e. class fields and class methods and using classes by means of constructing objects, accessing values from objects and mutating objects. In addtion extends is used to indicate inheritance from a base class.
 
@@ -57,6 +58,7 @@ The following are the changes in the grammer. We introduce new grammer for defin
       <program> 
        | <expr>
        | <decls> <expr>
+       
        
        
        
@@ -144,6 +146,8 @@ The following are the changes in the grammer. We introduce new grammer for defin
        let head = new List(), list_of_first_100 = range(1, 100, 2, head) in
             sum(list_of_first_100)
             
+            
+            
 
 ###### Note* : Limitations in current implementation enforces that if there are classes in the user program then they must be defined before function declarations and base class be defined before its child classes.
 
@@ -163,6 +167,7 @@ changes in the lexer, addition of new tokens.
            | "field" { FIELD }
            | "." { DOT }
                  
+ 
  
 changes in the parser, addition of new forms
          
@@ -228,6 +233,9 @@ changes in the parser, addition of new forms
               program :
                  | tydecls classdecls decls expr COLON typ EOF { Program($1, $2, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
                  | tydecls classdecls decls expr EOF { Program($1, $2, $3, $4, full_span()) }             
+                              
+                              
+                 
 
 
 #### AST.
