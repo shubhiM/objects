@@ -239,60 +239,34 @@ changes in the parser, addition of new forms
 
 
 #### AST.
-            
-               type 'a typ =
-                 | TyBlank of 'a
-                 | TyCon of string * 'a
-                 | TyVar of string * 'a
-                 | TyArr of 'a typ list * 'a typ * 'a
-                 | TyApp of 'a typ * 'a typ list * 'a
-                 | TyTup of 'a typ list * 'a
-
-               type 'a scheme =
-                 | SForall of string list * 'a typ * 'a
-
-               and 'a bind =
-                 | BBlank of 'a typ * 'a
+              and 'a bind =
+                 ...
                  | BName of string * 'a typ * 'a
-                 | BTuple of 'a bind list * 'a
-
-               and 'a binding = ('a bind * 'a expr * 'a)
-
-               and 'a expr =
-                    | ESeq of 'a expr * 'a expr * 'a
-                    | ETuple of 'a expr list * 'a
-                    | EGetItem of 'a expr * int * int * 'a
-                    | ESetItem of 'a expr * int * int * 'a expr * 'a
-                    | ELet of 'a binding list * 'a expr * 'a
-                    | ELetRec of 'a binding list * 'a expr * 'a
-                    | EPrim1 of prim1 * 'a expr * 'a
-                    | EPrim2 of prim2 * 'a expr * 'a expr * 'a
-                    | EIf of 'a expr * 'a expr * 'a expr * 'a
-                    | ENumber of int * 'a
-                    | EBool of bool * 'a
-                    | ENil of 'a typ * 'a
-                    | EId of string * 'a
-                    | EApp of 'a expr * 'a expr list * 'a
-                    | ELambda of 'a bind list * 'a expr * 'a
-                    | EAnnot of 'a expr * 'a typ * 'a
-                    | EGetObj of 'a expr * string * 'a
-                    | ESetObj of 'a expr * string * 'a expr * 'a
-                    | ENew of String * 'a
-                   
-               and  type 'a decl =
-                 | DFun of string * 'a bind list * 'a scheme * 'a expr * 'a
-
-               and type 'a tydecl =
-                 | TyDecl of string * 'a typ list * 'a
+              and 'a binding = ('a bind * 'a expr * 'a)
+              and 'a typ =
+                 ...
+                 (* Discussed in detail in the type system section *)
+                 | TyClass of 'a bind list * 'a bind list * 'a
+              and 'a expr =
+                  ...
+                 (* Accessing field on a class object *)
+                 | EDot of 'a expr * string * 'a 
+                 
+                 (* Calling method from a class object x.foo() x.foo(1, 2, 3) *)
+                 | EDotApp of 'a expr * string * 'a expr list * 'a 
+                 
+                 (* Mutating fields on a class object *)
+                 | EDotSet of 'a expr * string * 'a expr * 'a 
+                 
+                 (* Constructing a new Object *)
+                 | ENew of string * 'a
                                             
-               and type 'a classDecl =
-                  | Class of string * string *  'a bind list * 'a decl list * 'a
+              type 'a classDecl =
+                 | Class of string * string option *  'a bind list * 'a decl list * 'a
                
-               and type 'a program =
-                  | Program of 'a classdecl list * 'a tydecl list * 'a decl list list * 'a expr * 'a
+              type 'a program =
+                 | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a
 
-              
-    
 #### Well formedness:
              1. extends <IDENTIFIER> where IDENTIFIER is a class.
              2. Method names should be unique
