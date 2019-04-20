@@ -504,48 +504,39 @@ let rec infer_class
   (class_env : sourcespan typ envt)
   (scheme_env : sourcespan scheme envt)
   : sourcespan typ =
-  match c with
-  |Class(class_name, base, fields, methods, loc) ->
-       let base_class_name = match base with
-           | Some(name) -> name
-           | _ -> "None"
-       in
-       let class_type = (StringMap.find_opt base class_env) in
-       let (substs, method_typ_binds) = List.fold_left
-            (fun (subs, binds) decl ->
-              match decl with
-              | DFun(fun_name, args, scheme, body, loc) ->
-                let body = ELambda(args, body, loc) in
-                let sym = sprintf "method %s.%s" class_name fun_name in
-                let a = TyVar(gensym sym, loc) in
-                let s = infer_exp scheme_env a body subs [] in
-                let fun_typ =  apply_subst_typ s a in
-                ((compose_subst s subs), binds @ [BName(fun_name, fun_typ, loc)])
-          )
-      ([], [])
+
+ (* Gets the method types for creating Tyclass *)
+  let method_types methods class_name =
+    (let (substs, method_typ_binds) = List.fold_left
+         (fun (subs, binds) decl ->
+           match decl with
+           | DFun(fun_name, args, scheme, body, loc) ->
+             let body = ELambda(args, body, loc) in
+             let sym = sprintf "method %s.%s" class_name fun_name in
+             let a = TyVar(gensym sym, loc) in
+             let s = infer_exp scheme_env a body subs [] in
+             let fun_typ =  apply_subst_typ s a in
+             ((compose_subst s subs), binds @ [BName(fun_name, fun_typ, loc)])
+       )
+     ([], [])
       methods
       in
-      match class_type with
-        | None -> raise (InternalCompilerError "infer_class : undefined class ")
-        | Some(TyClass(f, m, loc)) -> TyClass(f @ fields, m @ method_typ_binds, loc)
+      method_typ_binds
+  )
+  in
 
-
-    |Class(class_name, _ , fields, methods, loc) ->
-      let (substs, method_typ_binds) = List.fold_left
-           (fun (subs, binds) decl ->
-             match decl with
-             | DFun(fun_name, args, scheme, body, loc) ->
-               let body = ELambda(args, body, loc) in
-               let sym = sprintf "method %s.%s" class_name fun_name in
-               let a = TyVar(gensym sym, loc) in
-               let s = infer_exp scheme_env a body subs [] in
-               let fun_typ =  apply_subst_typ s a in
-               ((compose_subst s subs), binds @ [BName(fun_name, fun_typ, loc)])
-         )
-     ([], [])
-     methods
-     in
-     TyClass(fields, method_typ_binds, loc)
+  match c with
+  |Class(class_name, base, fields, methods, loc) ->
+       let method_typ_binds = (method_types methods class_name) in
+       match base with
+        | Some(name) ->
+              (
+                 let c_type = (StringMap.find_opt name class_env) in
+                  match c_type with
+                     | None -> raise (InternalCompilerError "infer_class : undefined class ")
+                     | Some(TyClass(f, m, loc)) -> TyClass(f @ fields, m @ method_typ_binds, loc)
+              )
+        | _ -> TyClass(fields, method_typ_binds, loc)
 ;;
 
 let infer_prog env (p : sourcespan program) : 'a typ =
