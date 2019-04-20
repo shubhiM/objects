@@ -29,21 +29,22 @@ type prim2 =
   | EqB
 
 
-type 'a typ =
+and 'a typ =
   | TyBlank of 'a
   | TyCon of string * 'a
   | TyVar of string * 'a
   | TyArr of 'a typ list * 'a typ * 'a
   | TyApp of 'a typ * 'a typ list * 'a
   | TyTup of 'a typ list * 'a
+  | TyClass of 'a bind list * 'a bind list * 'a (* Type check classes *)
 
-type 'a scheme =
+and 'a scheme =
   | SForall of string list * 'a typ * 'a
 
 and 'a bind =
   | BBlank of 'a typ * 'a
   | BName of string * 'a typ * 'a
-  | BTuple of 'a bind list * 'a
+  | BTuple of 'a bind list * 'a (* unwrapping tuples *)
 
 and 'a binding = ('a bind * 'a expr * 'a)
 
