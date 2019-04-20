@@ -151,7 +151,82 @@ The following are the changes in the grammer. We introduce new grammer for defin
 
 Introducing objects and classes in our language is going to affect all phases of compilation from parsing to compilation of user code into machine code.
 
-#### Parser: 
+#### Parsing: 
+changes in the lexer, addition of new tokens.
+            
+         rule token = parse 
+                 ...
+           | "class" { CLASS }
+           | "extends" { EXTENDS }
+           | "method" { METHOD }
+           | "new" { NEW }
+           | "field" { FIELD }
+           | "." { DOT }
+                 
+ 
+changes in the parser, addition of new forms
+         
+        simple_expr :
+            // object cases
+            | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
+                          
+            // e dot field access
+            | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
+                          
+            // e dot applications
+             | binop_expr DOT ID LPARENNOSPACE exprs RPAREN { EDotApp($1, $3, $5, full_span()) }
+             | binop_expr DOT ID LPARENNOSPACE RPAREN { EDotApp($1, $3, [], full_span()) }
+                          
+             // e dot field mutations
+             | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
+                                                
+             classfield :
+               | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
+
+             classmethod :
+               | METHOD ID LPARENNOSPACE RPAREN COLON expr
+                  { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 4 in
+                     DFun($2, [], SForall([], TyArr([], TyBlank arg_pos, arg_pos), arg_pos), $6, full_span()) }
+               | METHOD ID LPARENNOSPACE RPAREN THINARROW typ COLON expr
+                     {
+                      let typ_pos = tok_span(6, 6) in
+                      DFun($2, [], SForall([], TyArr([], $6, typ_pos), typ_pos), $8, full_span()) }
+               | METHOD ID LPARENNOSPACE binds RPAREN COLON expr
+                      {
+                        let arg_types = List.map bind_to_typ $4 in
+                        let typ_pos = tok_span(3, 5) in
+                        let arr_typ = SForall([], TyArr(arg_types, TyBlank(typ_pos), typ_pos), typ_pos) in
+                        DFun($2, $4, arr_typ, $7, full_span())
+                      }
+               | METHOD ID LPARENNOSPACE binds RPAREN THINARROW typ COLON expr
+                       {
+                          let arg_types = List.map bind_to_typ $4 in
+                           let typ_pos = tok_span(3, 7) in
+                           DFun($2, $4, SForall([], TyArr(arg_types, $7, typ_pos), typ_pos), $9, full_span())
+                        }
+
+             classfields :
+                | { [] }
+                | classfield classfields { $1 :: $2 }
+
+             classmethods :
+                | { [] }
+                | classmethod classmethods { $1 :: $2 }
+
+             classdecl :
+                | CLASS ID superclass COLON classfields classmethods END { Class($2, $3, $5, $6, full_span()) }
+
+             superclass :
+                | { None }
+                | EXTENDS ID { Some $2 }
+
+              classdecls:
+                 | { [] }
+                 | classdecl classdecls { $1 :: $2 }
+                          
+              program :
+                 | tydecls classdecls decls expr COLON typ EOF { Program($1, $2, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
+                 | tydecls classdecls decls expr EOF { Program($1, $2, $3, $4, full_span()) }             
 
 
 #### AST.
