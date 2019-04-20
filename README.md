@@ -166,19 +166,20 @@ changes in the lexer, addition of new tokens.
  
 changes in the parser, addition of new forms
          
-        simple_expr :
-            // object cases
-            | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
-                          
-            // e dot field access
-            | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
-                          
-            // e dot applications
-             | binop_expr DOT ID LPARENNOSPACE exprs RPAREN { EDotApp($1, $3, $5, full_span()) }
-             | binop_expr DOT ID LPARENNOSPACE RPAREN { EDotApp($1, $3, [], full_span()) }
-                          
-             // e dot field mutations
-             | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
+             simple_expr :
+                ...
+               // object cases
+               | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
+
+               // e dot field access
+               | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
+
+               // e dot applications
+                | binop_expr DOT ID LPARENNOSPACE exprs RPAREN { EDotApp($1, $3, $5, full_span()) }
+                | binop_expr DOT ID LPARENNOSPACE RPAREN { EDotApp($1, $3, [], full_span()) }
+
+                // e dot field mutations
+                | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
                                                 
              classfield :
                | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
