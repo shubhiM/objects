@@ -1,3 +1,10 @@
+class Bar:
+  field a
+  field b
+  method add(self):
+    a + b
+end
+
 class Foo extends Bar:
 	field x
 	field y

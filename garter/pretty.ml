@@ -190,6 +190,8 @@ let string_of_classdecl_with (print_a : 'a -> string) (cd : 'a classdecl) : stri
               (ExtString.String.join "\n\t" (List.map string_of_method classmethods))
               (print_a a)
 
+let string_of_classdecl (cd : 'a classdecl) : string =
+    string_of_classdecl_with (fun _ -> "") cd
 
 let string_of_tydecl (td : 'a tydecl) : string =
   string_of_tydecl_with (fun _ -> "") td

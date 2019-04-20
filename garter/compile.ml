@@ -1544,7 +1544,8 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
   |> (add_phase desugared_bindings desugar_bindings)
-  |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth))
+  (* |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth)) *)
+  |> (add_err_phase type_checked type_synth)
   |> (add_phase tagged tag)
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)
