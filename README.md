@@ -1,195 +1,121 @@
 # Object Oriented Programming.
 
-### Goal : Using a simplified version of Fer-de-lance and extending the language by adding support for Object Oriented Programming.
+In this project, we are going to add object oriented features to an existing compiler which provides support for expressions, statements, functions, mutually recursive and recursive functions, lambdas, let expressions and sequences. we are going to analyze the changes to be introduced in each phase of the compiler pipeline to implement all the new features and also how the interactions between these new object oriented features and existing forms are going to get impacted.
 
 ### Features: 
    
    The following are some of the features that are going to be added to the language.
  
-    1. Classes definitions and constructors
+    1. Classes definitions
+    2. Constructors - default constructors with no arguments.
     2. self
     3. Methods
     4. Fields
     5. Dynamic dispatch
     6. Inheritance - single and multilevel
     7. Overriding
-    8. instanceof  
     
-## Compiler Pipeline: 
+    
+### Grammer: 
+The following are the changes in the grammer. We introduce new grammer for defining classes i.e. class fields and class methods and using classes by means of constructing objects, accessing values from objects and mutating objects. In addtion extends is used to indicate inheritance from a base class.
 
-Introducing objects and classes in our language is going to affect all phases of compilation. 
-The following are the phases affected  by this new feature and changes in them.
-
-#### Grammer: 
-      <dec> : 
-       | <classdec>
-      <classdec> : 
-       | class IDENTIFIER : <classfields>
-       | class IDENTIFIER extends IDENTIFIER : <classfields>
+      <decl> : 
+       | ...
+       | <classdecl>
+      <decls>
+       | <decl> <decls>
+      <classdecl> : 
+       | class IDENTIFIER <baseclass>: <classfields> <classmethods>
+      <baseclass> : 
+       | None
+       | extends IDENTIFIER
       <classfields> :
        | <classfield>
        | <classfield> <classfields>
       <classfield> : 
-       | <field>
-       | <method>
-      <method> :
-       | method IDENTIFIER(<ids>) : <exp>
-       | method IDENTIFIER(<ids>) -> <typ> : <exp>
-      <field> :
-       | field IDENTIFIER
        | field <bind>
-      <exprs> : 
+      <classmethods>
+       | <classmethod>
+       | <classmethod> <classmethods>
+      <classmethod> :
+       | method IDENTIFIER(<binds>) : <expr> 
+       | method IDENTIFIER() : <expr> 
+      <expr> : 
        | ...
        | new IDENTIFIER()
-       | <obj-get>
-       | <obj-set>
-      <obj-get> :
-       | IDENTIFIER.IDENTIFIER
-       | <obj-get>.IDENTIFIER
-      <obj-set> :
-       | <obj-get> := <expr>
-      
-#### Syntax: The following are the new syntax forms added to the language with respect to object oriented programming
+       | <dot>
+       | <dot-app>
+       | <dot-set>
+      <exprs>
+       | <expr> <exprs>
+      <dot> :
+       | <expr>.IDENTIFIER
+      <dot-app> :
+       | <expr>.IDENTIFIER()
+       | <expr>.IDENTIFIER(<exprs>)
+      <dot-set> :
+       | <dot> := <expr>
+      <program> 
+       | <expr>
+       | <decls> <expr>
        
-        # Defining a class.
+       
+       
+       
+#### user syntax
+
+        (* class definitions *)
         class Point2D:
             field x
             field y
-            ...
-        end
-        
-        # Defining a class that extends base class
-        class Point3D extends Point2:
-            field z
-            ...
-        end
-        
-        # Defining a class with both fields and methods
-        class Point2D:
-            field x
-            field y
-         
-            method get_x(self):  
+            
+            method get_x(self):
                self.x
-          
+            
             method get_y(self):
                self.y
         end
         
-       # Defining a class with both fields and methods with type annotation s
-        class Point2D:
-            field x : int 
-            field y : int
-         
-            method get_x(self) -> int:  
-               self.x
-          
-            method get_y(self) -> int:
-               self.y
+        class Point3D extends Point2:
+            field z
+            
+            method get_z(self):
+               self.z
+            
+            method set_x(self, x):
+               self.x = x
+               
+            method set_y(self, y):
+               self.y = y
+            
+            method set_z(self, z):
+               self.z = z
         end
-                       
         
-        # Creating objects of classes using new keyword which is a reserved keyword.
-            point_1 = new Point2D()
-            
-        # setting the fields
-            point_1.x := 1
-            point_1.y := 2
-           
-          
-       # Accessing fields using DOT operator, DOT operator has a special purpose and is used only to access
-       # object fields or methods.
-            x1 := point_1.x
-            y1 := point_1.y
-         
-       # Accessing methods using DOT operator
-            x := point_1.get_x()
-            y := point_1.get_y()
-            
-            
-       # Overriding methods in the derived class, overrided methods have to be of the same signature 
-       # as of the base class.
-       # Derived class TogglePoint2D has the fields x and y inherited from Point2D class and new definitions
-       # for get_x and get_y.
+        def merge(point_1, point_2):
+            (point_1.get_x() + point_2.get_x() + point_1.y + point_2.y + point_1.get_z() + point_2.z)
+        
+        let point_1 = new Point3D(), point_2 = new Point3D() in
+            (point_1.set_x(1); point_1.set_y(2); point_1.set_z(3);
+             point_2.set_x(3); point_1.set_y(2); point_1.set_z(1);
+             merge(point_1, point_2))
+        
+       (* Now you can define your own data structures and liberary functions *)
+       (* More useful programs *)
        
-          class TogglePoint2D extends Point2D:
-                
-                method get_x(self):
-                    self.y := x;
-                    self.x
-                
-                method get_y(self):
-                     self.x := y;
-                     self.y
-          
-         end
-       # Multiple level inheritance is supported by our language. 
-       # Class cat will have all the fields and methods of its base class and,
-       # its base class's base class and so on until we find a class that does not extend any class.
-       # Our language is also going to support dynamic dispatch to deal with polymorphic functions.
-       
-           class Animal: # All base classes extends Object class.
-                 fields name, legs, weight, habitat
-                 
-                 method get_name(self):
-                     self.name
-                  
-                 method get_legs(self):
-                     self.legs
-                     
-                 method get_weight(self):
-                     self.weight
-                     
-                 method get_habitat(self):
-                     self.habitat
-           end          
-           
-           class DomesticAnimal extends Animal:
-                 field owner
-               
-                 method has_owner(self):
-                  self.owner
-                  
-                 method owned_by(self, owner):
-                     self.owner := owner
-           end        
-           class Cat extends DomesticAnimal:
-                 field color
-                  
-                 method has_color(self):
-                     self.color
-           end        
-                   
-       # Definition of Program has changed from  being a collection of function groups
-       # to a collection of function group and classes.
-       # For example the following is an example program in our language where we can create
-       # a linked list of numbers and using range and then also sum all the number using sum
-       
-        def range(start, end, step, list):
-            if start == end:
-               list
-            else:
-               range(start + step, end, step, (if list == nil : new Node(start) else: (list.next = new Node(start), list))
-               
-        def sum(list):
-            if list == nil : 0 else: list.first().val + sum(list.rest())
-                 
-            
         class Node:
             field val
             field next
         end    
         
         class List:
-            # head, tail, curr are fields of Node type.
-            # There is no static type checking to infer the types of these fields.
             field head
             field tail
             field curr
             field size 
                
             method add(self, val):
-                  curr.next := new Node(val); curr := curr.next; size := size + 1
+                  (curr.next := new Node(val); curr := curr.next; self.size := self.size + 1)
                   
             method size(self):
                 self.size
@@ -204,78 +130,202 @@ The following are the phases affected  by this new feature and changes in them.
                self.next
                
         end
+         
+       def range_helper(start, end, step, head, head):
+         if start == end:
+            list
+         else:
+            (list.next := new Node(start); range(start + step, end, step, list.next, list))
+          
+       def range(start, end, step, head):
+         range_helper(start, end, step, head, head)
+            
+       def sum(list):
+            if list == nil : 0 else: list.first().val + sum(list.rest())
         
-        let list_of_first_100_even_numbers = range(1, 100, 2, nil) in
-            sum(list_of_first_100_even_numbers)
+       let head = new List(), list_of_first_100 = range(1, 100, 2, head) in
+            sum(list_of_first_100)
             
-#### Parser: Extension of the AST.
             
-               type 'a typ =
-                 | TyBlank of 'a
-                 | TyCon of string * 'a
-                 | TyVar of string * 'a
-                 | TyArr of 'a typ list * 'a typ * 'a
-                 | TyApp of 'a typ * 'a typ list * 'a
-                 | TyTup of 'a typ list * 'a
+            
 
-               type 'a scheme =
-                 | SForall of string list * 'a typ * 'a
+###### Note* : Limitations in current implementation enforces that if there are classes in the user program then they must be defined before function declarations and base class be defined before its child classes.
 
-               and 'a bind =
-                 | BBlank of 'a typ * 'a
+## Compiler Pipeline: 
+
+Introducing objects and classes in our language is going to affect all phases of compilation from parsing to compilation of user code into machine code.
+
+#### Parsing: 
+changes in the lexer, addition of new tokens.
+            
+         rule token = parse 
+                 ...
+           | "class" { CLASS }
+           | "extends" { EXTENDS }
+           | "method" { METHOD }
+           | "new" { NEW }
+           | "field" { FIELD }
+           | "." { DOT }
+                 
+ 
+ 
+changes in the parser, addition of new forms
+         
+             simple_expr :
+                ...
+               // object cases
+               | NEW ID LPARENNOSPACE RPAREN { ENew($2, full_span()) }
+
+               // e dot field access
+               | binop_expr DOT ID %prec COLON { EDot($1, $3, full_span()) }
+
+               // e dot applications
+                | binop_expr DOT ID LPARENNOSPACE exprs RPAREN { EDotApp($1, $3, $5, full_span()) }
+                | binop_expr DOT ID LPARENNOSPACE RPAREN { EDotApp($1, $3, [], full_span()) }
+
+                // e dot field mutations
+                | binop_expr DOT ID COLONEQ expr %prec DOT { EDotSet($1, $3, $5, full_span()) }
+                                                
+             classfield :
+               | FIELD ID { BName($2, TyBlank(full_span()), full_span()) }
+
+             classmethod :
+               | METHOD ID LPARENNOSPACE RPAREN COLON expr
+                  { let arg_pos = Parsing.rhs_start_pos 3, Parsing.rhs_end_pos 4 in
+                     DFun($2, [], SForall([], TyArr([], TyBlank arg_pos, arg_pos), arg_pos), $6, full_span()) }
+               | METHOD ID LPARENNOSPACE RPAREN THINARROW typ COLON expr
+                     {
+                      let typ_pos = tok_span(6, 6) in
+                      DFun($2, [], SForall([], TyArr([], $6, typ_pos), typ_pos), $8, full_span()) }
+               | METHOD ID LPARENNOSPACE binds RPAREN COLON expr
+                      {
+                        let arg_types = List.map bind_to_typ $4 in
+                        let typ_pos = tok_span(3, 5) in
+                        let arr_typ = SForall([], TyArr(arg_types, TyBlank(typ_pos), typ_pos), typ_pos) in
+                        DFun($2, $4, arr_typ, $7, full_span())
+                      }
+               | METHOD ID LPARENNOSPACE binds RPAREN THINARROW typ COLON expr
+                       {
+                          let arg_types = List.map bind_to_typ $4 in
+                           let typ_pos = tok_span(3, 7) in
+                           DFun($2, $4, SForall([], TyArr(arg_types, $7, typ_pos), typ_pos), $9, full_span())
+                        }
+
+             classfields :
+                | { [] }
+                | classfield classfields { $1 :: $2 }
+
+             classmethods :
+                | { [] }
+                | classmethod classmethods { $1 :: $2 }
+
+             classdecl :
+                | CLASS ID superclass COLON classfields classmethods END { Class($2, $3, $5, $6, full_span()) }
+
+             superclass :
+                | { None }
+                | EXTENDS ID { Some $2 }
+
+              classdecls:
+                 | { [] }
+                 | classdecl classdecls { $1 :: $2 }
+                          
+              program :
+                 | tydecls classdecls decls expr COLON typ EOF { Program($1, $2, $3, EAnnot($4, $6, tok_span(4, 6)), full_span()) }
+                 | tydecls classdecls decls expr EOF { Program($1, $2, $3, $4, full_span()) }             
+                              
+                              
+                 
+
+
+#### AST.
+              and 'a bind =
+                 ...
                  | BName of string * 'a typ * 'a
-                 | BTuple of 'a bind list * 'a
-
-               and 'a binding = ('a bind * 'a expr * 'a)
-
-               and 'a expr =
-                    | ESeq of 'a expr * 'a expr * 'a
-                    | ETuple of 'a expr list * 'a
-                    | EGetItem of 'a expr * int * int * 'a
-                    | ESetItem of 'a expr * int * int * 'a expr * 'a
-                    | ELet of 'a binding list * 'a expr * 'a
-                    | ELetRec of 'a binding list * 'a expr * 'a
-                    | EPrim1 of prim1 * 'a expr * 'a
-                    | EPrim2 of prim2 * 'a expr * 'a expr * 'a
-                    | EIf of 'a expr * 'a expr * 'a expr * 'a
-                    | ENumber of int * 'a
-                    | EBool of bool * 'a
-                    | ENil of 'a typ * 'a
-                    | EId of string * 'a
-                    | EApp of 'a expr * 'a expr list * 'a
-                    | ELambda of 'a bind list * 'a expr * 'a
-                    | EAnnot of 'a expr * 'a typ * 'a
-                    | EGetObj of 'a expr * string * 'a
-                    | ESetObj of 'a expr * string * 'a expr * 'a
-                    | ENew of String * 'a
-                   
-               and  type 'a decl =
-                 | DFun of string * 'a bind list * 'a scheme * 'a expr * 'a
-
-               and type 'a tydecl =
-                 | TyDecl of string * 'a typ list * 'a
+              and 'a binding = ('a bind * 'a expr * 'a)
+              and 'a typ =
+                 ...
+                 (* Discussed in detail in the type system section *)
+                 | TyClass of 'a bind list * 'a bind list * 'a
+              and 'a expr =
+                  ...
+                 (* Accessing field on a class object *)
+                 | EDot of 'a expr * string * 'a 
+                 
+                 (* Calling method from a class object x.foo() x.foo(1, 2, 3) *)
+                 | EDotApp of 'a expr * string * 'a expr list * 'a 
+                 
+                 (* Mutating fields on a class object *)
+                 | EDotSet of 'a expr * string * 'a expr * 'a 
+                 
+                 (* Constructing a new Object *)
+                 | ENew of string * 'a
                                             
-               and type 'a classDecl =
-                  | Class of string * string *  'a bind list * 'a decl list * 'a
+              type 'a classDecl =
+                 | Class of string * string option *  'a bind list * 'a decl list * 'a
                
-               and type 'a program =
-                  | Program of 'a classdecl list * 'a tydecl list * 'a decl list list * 'a expr * 'a
+              type 'a program =
+                 | Program of 'a tydecl list * 'a classdecl list * 'a decl list list * 'a expr * 'a
 
-              
-    
 #### Well formedness:
-             1. extends <IDENTIFIER> where IDENTIFIER is a class.
+             1. extends <IDENTIFIER> where IDENTIFIER needs to exist.
              2. Method names should be unique
              3. Method argument ids should be unique
              4. first argument to a method must be 'self'
              5. Field names should be unique
-             6. self is keyword
              7. new is a keyword
-             8. <IDENTIFIER> . <IDENTIFIER> , before . should be a class and after . should be a field in class
-             9. <IDENTIFIER> . <IDENTIFIER> (x, y, z) before . should be a class and after . should be a method in class with same arity
-            10: <IDENTIFIER> . <IDENTIFIER> := <something> mutation is only possible for class fields.
+             8. <IDENTIFIER> . <IDENTIFIER> , both identifiers should be in scope.
+             9. <IDENTIFIER> . <IDENTIFIER> (x, y, z)  identifiers should be in scope and function arity should be correct.
+            10: <IDENTIFIER> . <IDENTIFIER> := <something> both indentifiers should be in scope.
             
-#### Type system : Not going to be implemented for the purpose of the project.
+#### Type system : New type is introduced TyClass which will get instantiated for each class definition. Thus, each class is a new custom type.
+
+ 1. TyClass will get created for each class definition. TyClass(field_types, method_types, pos) where field_types and         method_types are both 'a bind list.
+        
+         | TyClass of 'a bind list * 'a bind list * 'a 
+       
+   Example: TyClass for Point2D class introduced above.
+                 
+                 field_types_2D = [BName(x, TyCon(int, pos), pos);
+                                   BName(y, TyCon(int, pos), pos)]
+                 
+                 nothing_to_int =  TyArr([TyBlank(pos)], TyCon(int, pos), pos)
+                 
+                 method_types_2D = [BName(get_x, nothing_to_int , pos); 
+                                    BName(get_y, nothing_to_int, pos)]
+                 
+                 class  ----> class Type
+                 Point2D  -> TyClass(field_types_2D, method_types_2D, pos)
+        
+   
+   Example: TyClass for Point3D class introduced above. Takes into account inheritance.
+                
+                 field_types_3D = [BName(x, TyCon(int, pos), pos);
+                                BName(y, TyCon(int, pos), pos); 
+                                BName(z, TyCon(int, pos), pos)]
+                 
+                 nothing_to_int = TyArr([TyBlank(pos)], TyCon(int, pos), pos)
+                 
+                 int_to_class =  TyArr([TyCon(int, pos)], Point2D , pos)
+                 
+                 method_types_3D = [BName(get_x, nothing_to_int , pos); 
+                                 BName(get_y, nothing_to_int, pos); 
+                                 BName(get_z, nothing_to_int, pos);
+                                 BName(set_x, int_to_class , pos);
+                                 BName(set_y, int_to_class , pos);
+                                 BName(set_z, int_to_class , pos)]
+                 
+                 TyClass(field_types_3D, method_types_3D, pos)
+   
+  ###### Note** : In case of inheritance, base class fields and methods come before the sub class fields and methods in TyClass definition. This is of great significance later.
+                
+ 
+2. create a class_type_env which is a mapping of class name to its type and pass it to all the program decl groups and also subsequent expressions and even the main expression. 
+
+3. Change infer_expr to add type inference for four new forms
+            
+                  
+
 
 #### Tagging : 
 
@@ -311,9 +361,12 @@ The following are the phases affected  by this new feature and changes in them.
                   and 'a aprogram =
                     | AProgram of 'a aclassdecl list * 'a adecl list * 'a aexpr * 'a
                   ;;
+
+#### 1. Compilation of classes
+
 #### Compilation of Objects
 
-#### 1. class
+
 We store class information in class descriptors, which stores class methods. If a class is inheritated from a base class, the class descriptor should have a pointer to the class descriptor of its base class. For a class
 
 ```
