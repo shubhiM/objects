@@ -1,54 +1,68 @@
 # Object Oriented Programming.
 
-### Goal : Using a simplified version of Fer-de-lance and extending the language by adding support for Object Oriented Programming.
+In this project, we are going to add object oriented features to an existing compiler which provides support for expressions, statements, functions, mutually recursive and recursive functions, lambdas, let expressions and sequences. we are going to analyze the changes to be introduced in each phase of the compiler pipeline to implement all the new features and also how the interactions between these new object oriented features and existing forms are going to get impacted.
 
 ### Features: 
    
    The following are some of the features that are going to be added to the language.
  
-    1. Classes definitions and constructors
+    1. Classes definitions
+    2. Constructors
     2. self
     3. Methods
     4. Fields
     5. Dynamic dispatch
     6. Inheritance - single and multilevel
     7. Overriding
-    8. instanceof  
     
+### Grammer: 
+The following are the changes in the grammer. We introduce new grammer for defining classes i.e. class fields and class methods and using classes by means of constructing objects, accessing values from objects and mutating objects. In addtion extends is used to indicate inheritance from a base class.
+
+      <decl> : 
+       | ...
+       | <classdecl>
+      <decls>
+       | <decl> <decls>
+      <classdecl> : 
+       | class IDENTIFIER <baseclass>: <classfields> <classmethods>
+      <baseclass> : 
+       | None
+       | extends IDENTIFIER
+      <classfields> :
+       | <classfield>
+       | <classfield> <classfields>
+      <classfield> : 
+       | field <bind>
+      <classmethods>
+       | <classmethod>
+       | <classmethod> <classmethods>
+      <classmethod> :
+       | method IDENTIFIER(<binds>) : <expr> 
+       | method IDENTIFIER() : <expr> 
+      <expr> : 
+       | ...
+       | new IDENTIFIER()
+       | <dot>
+       | <dot-app>
+       | <dot-set>
+      <exprs>
+       | <expr> <exprs>
+      <dot> :
+       | <expr>.IDENTIFIER
+      <dot-app> :
+       | <expr>.IDENTIFIER()
+       | <expr>.IDENTIFIER(<exprs>)
+      <dot-set> :
+       | <dot> := <expr>
+      <program> 
+       | <expr>
+       | <decls> <expr>
+      
 ## Compiler Pipeline: 
 
 Introducing objects and classes in our language is going to affect all phases of compilation. 
 The following are the phases affected  by this new feature and changes in them.
 
-#### Grammer: 
-      <dec> : 
-       | <classdec>
-      <classdec> : 
-       | class IDENTIFIER : <classfields>
-       | class IDENTIFIER extends IDENTIFIER : <classfields>
-      <classfields> :
-       | <classfield>
-       | <classfield> <classfields>
-      <classfield> : 
-       | <field>
-       | <method>
-      <method> :
-       | method IDENTIFIER(<ids>) : <exp>
-       | method IDENTIFIER(<ids>) -> <typ> : <exp>
-      <field> :
-       | field IDENTIFIER
-       | field <bind>
-      <exprs> : 
-       | ...
-       | new IDENTIFIER()
-       | <obj-get>
-       | <obj-set>
-      <obj-get> :
-       | IDENTIFIER.IDENTIFIER
-       | <obj-get>.IDENTIFIER
-      <obj-set> :
-       | <obj-get> := <expr>
-      
 #### Syntax: The following are the new syntax forms added to the language with respect to object oriented programming
        
         # Defining a class.
