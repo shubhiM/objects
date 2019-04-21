@@ -36,7 +36,7 @@ and 'a typ =
   | TyArr of 'a typ list * 'a typ * 'a
   | TyApp of 'a typ * 'a typ list * 'a
   | TyTup of 'a typ list * 'a
-  | TyClass of 'a bind list * 'a bind list * 'a
+  | TyClass of string * 'a bind list * 'a bind list * 'a 
 
 and 'a scheme =
   | SForall of string list * 'a typ * 'a
@@ -211,6 +211,7 @@ and map_tag_T (f : 'a -> 'b) t =
      TyApp(tag_t, tag_args, tag_app)
   | TyVar (x, a) -> TyVar(x, f a)
   | TyTup(tys, a) -> TyTup(List.map (map_tag_T f) tys, f a)
+  | TyClass(name, fields, methods, a) -> TyClass(name, List.map (map_tag_B f) fields, List.map (map_tag_B f) methods, f a)
 and map_tag_S (f : 'a -> 'b) s =
   match s with
   | SForall(vars, typ, a) -> SForall(vars, map_tag_T f typ, f a)

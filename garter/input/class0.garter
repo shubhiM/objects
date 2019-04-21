@@ -11,4 +11,4 @@ class Foo extends Bar:
     1
 end
 
-let x : Foo = new Foo() in x.a
+let x : Bar = new Bar() in x.a := 10; x.a

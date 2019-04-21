@@ -1401,9 +1401,9 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
     in
 
     let class_instr =
-      [[ ILineComment(sprintf "Methods of class %s" (string_of_aclassdecl c))];
+      [[ ILineComment(sprintf "Methods of class")];
         comp_methods;
-       [ ILineComment(sprintf "creating class descriptor  %s" (string_of_aclassdecl c)) ];
+       [ ILineComment(sprintf "creating class descriptor" ) ];
         gc_instr ;
         header_instr ;
         mov_instr ;
@@ -1416,9 +1416,9 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
       in
 
       let class_instr =
-        [ ILineComment(sprintf "Methods of class %s" (string_of_aclassdecl c)) ]
+        [ ILineComment(sprintf "Methods of class") ]
         @ comp_methods;
-        [ ILineComment(sprintf "creating class descriptor  %s" (string_of_aclassdecl c))]
+        [ ILineComment(sprintf "creating class descriptor")]
         @ gc_instr
         @ header_instr
         @ mov_instr
@@ -1513,7 +1513,7 @@ err_nil_deref:%s
      let initial_env = List.map (fun (name, slot, _) -> (name, slot)) native_lambdas in
 
      (* first we compile the classes so, we can store the class descriptors on the heap *)
-     let comp_classdecls = List.map (fun cls -> (compile_class cls 0 initial_env)) classdecls in
+     (* let comp_classdecls = List.map (fun cls -> (compile_class cls 0 initial_env)) classdecls in *)
 
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in
   (* $heap is a mock parameter name, just so that compile_fun knows our_code_starts_here takes in 1 parameter *)
@@ -1530,7 +1530,7 @@ err_nil_deref:%s
         (* Then round back down *)
         IInstrComment(IAnd(Reg(ESI), HexConst(0xFFFFFFF8)), "by adding no more than 7 to it")
        ] in
-     let main = (prologue @ heap_start @ (List.flatten comp_classdecls) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
+     let main = (prologue @ heap_start (* @ (List.flatten comp_classdecls) *) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
      sprintf "%s%s%s\n" prelude (to_asm main) suffix
 ;;
 
@@ -1550,10 +1550,10 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
                    (
                       let t = (find env base_name (string_of_sourcespan pos)) in
                       match t with
-                          | TyClass(f, m, loc) -> TyClass((f @ fields), (m @ method_binds), pos)
+                          | TyClass(n, f, m, loc) -> TyClass(name, (f @ fields), (m @ method_binds), pos)
                           | _ -> raise (InternalCompilerError "infer_class : undefined class ")
                    )
-            | _ -> TyClass(fields, method_binds, pos)
+            | _ -> TyClass(name, fields, method_binds, pos)
             end
     in
     let new_let_bindings (bindings : ('a bind * 'a expr * 'a) list) (env : 'a typ envt) =
@@ -1562,19 +1562,19 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
            if the expr is ENew then get the TyRecord from the class environment.
         *)
         List.fold_left
-        (fun new_b (bind, expr, pos1) ->
+        (fun (new_b, env) (bind, expr, pos1) ->
             match bind with
             | BName(name, typ, pos2) ->
               (
                 match expr with
                   |ENew(class_name, loc) ->
                     let t = (find env class_name (string_of_sourcespan loc)) in
-                    new_b @ [(BName(name, t, pos2), expr, pos1)]
-                  | _ -> new_b @ [(bind, expr, pos1)] (* keep as it is *)
+                    (new_b @ [(BName(name, t, pos2), expr, pos1)], (name, t)::env)
+                  | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
               )
-            | _ -> new_b @ [(bind, expr, pos1)] (* keep as it is *)
+            | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
         )
-        []
+        ([], env)
         bindings
     in
     let rec helpP (p : sourcespan program) (env : sourcespan typ envt) =
@@ -1593,30 +1593,71 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
         let new_declgroups = List.map (fun g -> (helpG g new_class_env)) declgroups in
         let new_main = helpE main new_class_env in
         Program(tydecls, classes, new_declgroups, new_main, pos)
+    and find_index x lst =
+      match lst with
+      | [] -> raise (Failure "update_bindings: fail to find field/method")
+      | bind::rest -> begin match bind with 
+                     | BName(name, _, _) when name = x -> 0      
+                     | _ -> 1 + find_index x rest 
+                     end
     and helpC c env =
       match c with
-      | Class(name, base, fields, methods, tag) ->
+      | Class(name, base, fields, methods, loc) ->
         (* Add this class to the env *)
-        (* let class_type = (type_of_this c env) in *)
-        (* let new_env = (name, class_type)::env in *)
-        (* TODO: first test the simple portion *)
         let new_methods = List.map (fun m -> (helpD m env)) methods in
-        Class(name, base, fields, new_methods, tag)
+        Class(name, base, fields, new_methods, loc)
     and helpG g env =
       List.map (fun d -> (helpD d env)) g
     and helpD d env =
       match d with
-      | DFun(funname, args, scheme, body, tag) ->
-        DFun(funname, args, scheme, (helpE body env), tag)
-    and helpE (e : sourcespan expr) (env : sourcespan typ envt) : 'a expr =
+      | DFun(funname, args, scheme, body, loc) ->
+        DFun(funname, args, scheme, (helpE body env), loc)
+    and name_of_expr expr : string = 
+      match expr with
+      | EId(id, _) -> id
+      | _ -> "failwith: update_bindings - not an id"
+    and helpE (e : sourcespan expr) (env : sourcespan typ envt) : sourcespan expr =
       match e with
-      | ELet (bindings, body, tag) ->
-        let new_bindings = (new_let_bindings bindings env) in
-        (* printf (ExtString.String.join ", " (List.map string_of_binding new_bindings)); *)
-        ELet(new_bindings, (helpE body env), tag)
-      | ELetRec (bindings, body , tag) ->
-        let new_bindings = (new_let_bindings bindings env) in
-        ELetRec(new_bindings, (helpE body env), tag)
+      | ELet (bindings, body, loc) ->
+          let (new_bindings, env) = (new_let_bindings bindings env) in
+          ELet(new_bindings, (helpE body env), loc)
+      | ELetRec (bindings, body , loc) ->
+          let (new_bindings, env) = (new_let_bindings bindings env) in
+          ELetRec(new_bindings, (helpE body env), loc)
+      | ENew(classname, loc) ->
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let (name, vars) = match classtype with
+              | TyClass(cname, fields, methods, loc) -> 
+                  (cname, List.map (fun _ -> ENumber(0, loc)) fields)
+          in
+          ETuple(EId(name, loc)::vars , loc)
+      | EDot(expr, id, loc) -> 
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let offset = match classtype with
+              | TyClass(cname, fields, methods, _) -> 
+                  find_index id fields
+          in
+          EGetItem(expr, offset+1, 0, loc)
+      | EDotApp(expr, id, args, loc) -> 
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let (name, offset) = 
+              match classtype with
+              | TyClass(cname, fields, methods, _) -> 
+                  (cname, find_index id methods)
+          in
+          let vtable = EId(name, loc) in 
+          let args = expr::args in
+          EApp(EGetItem(vtable, offset+1, -1, loc), args, loc)
+      | EDotSet(expr, id, newval, loc) ->
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let offset = match classtype with
+              | TyClass(cname, fields, methods, _) -> 
+                  find_index id fields
+          in
+          ESetItem(expr, offset, 0, newval, loc)
       | _ -> e
     in helpP prog []
 ;;
@@ -1625,9 +1666,9 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
   |> (add_phase desugared_bindings desugar_bindings)
+  |> (add_phase resolve_obj_types update_bindings)
   (* |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth)) *)
   (* |> (add_err_phase type_checked type_synth) *)
-  |> (add_phase resolve_obj_types update_bindings)
   |> (add_phase tagged tag)
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)

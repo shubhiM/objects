@@ -73,6 +73,7 @@ let rec string_of_typ (t : 'a typ) : string =
                            (ExtString.String.join ", " (List.map string_of_typ args))
   | TyVar(id, _) -> "'" ^ id
   | TyTup(tys, _) -> "(" ^ (ExtString.String.join " * " (List.map string_of_typ tys)) ^ ")"
+  | TyClass(name, _, _, _) -> sprintf "[class of %s]" name
 let string_of_scheme (s : 'a scheme) : string =
   match s with
   | SForall(vars, typ, _) -> sprintf "Forall %s, %s" (ExtString.String.join ", " vars) (string_of_typ typ)
@@ -375,7 +376,7 @@ let rec format_typ (fmt : Format.formatter) (print_a : 'a -> string) (t : 'a typ
      close_angle fmt; pp_print_string fmt (maybe_angle (print_a a)); pp_print_string fmt " "
   | TyTup(tys, a) ->
      open_paren fmt; print_list fmt help tys print_star_sep; close_paren fmt
-  | TyClass(ftys, mtys, a) ->
+  | TyClass(_, ftys, mtys, a) ->
         open_paren fmt;
         print_list fmt (fun fmt -> format_bind fmt print_a) ftys print_comma_sep;
         pp_print_string fmt ", ";
