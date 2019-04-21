@@ -294,14 +294,18 @@ let rename_and_tag (p : tag program) : tag program =
        let (binds', env') = helpBS env binds in
        let body' = helpE env' body in
        ELambda(binds', body', tag)
-   | EDot(expr, id, tag) ->
-       EDot(helpE env expr, id, tag)
-   | EDotApp(expr, id, args, tag) ->
-           EDotApp(helpE env expr, id, (List.map (fun arg -> (helpE env arg)) args),  tag)
-   | EDotSet(expr, id, new_value, tag) ->
-       EDotSet(helpE env expr, id, helpE env new_value, tag)
-   | ENew(class_name, tag) ->
-       ENew(class_name, tag)
+    | EDot(expr, id, tag) ->
+      failwith "EDot not present at rename and tag"
+       (* EDot(helpE env expr, id, tag) *)
+    | EDotApp(expr, id, args, tag) ->
+      failwith "EDotApp not present at rename and tag"
+           (* EDotApp(helpE env expr, id, (List.map (fun arg -> (helpE env arg)) args),  tag) *)
+    | EDotSet(expr, id, new_value, tag) ->
+      failwith "EDotSet not present at rename and tag"
+       (* EDotSet(helpE env expr, id, helpE env new_value, tag) *)
+    | ENew(class_name, tag) ->
+      failwith "ENew not present at rename and tag"
+       (* ENew(class_name, tag) *)
 
 
   in (rename [] p)
@@ -513,7 +517,7 @@ let anf (p : tag program) : unit aprogram =
        let (new_binds, new_setup) = List.split new_binds_setup in
        let (body_ans, body_setup) = helpC body in
        (body_ans, (BLetRec (List.combine names new_binds)) :: body_setup)
-    |EDot(expr, id, tag) ->
+    (* |EDot(expr, id, tag) ->
       let (expr_imm, expr_setup) = helpI expr in
       (* Set the offset to 0 for now *)
       (CDot(expr_imm, id, 0, ()), expr_setup)
@@ -525,7 +529,9 @@ let anf (p : tag program) : unit aprogram =
       let (expr_imm, expr_setup) = helpI expr in
       let (new_imm, new_setup) = helpI new_val in
       (CDotSet(expr_imm, id, 0, new_imm, ()), expr_setup @ new_setup)
-    |ENew(class_name, tag) -> (CNew(class_name, ()), [])
+    |ENew(class_name, tag) -> (CNew(class_name, ()), []) -> *)
+    |EDot _ | EDotApp _ | EDotSet _ | ENew _ ->
+      failwith "anf: EDot/EDotApp/EDotSet/ENew has to be desugared before anfing."
     | _ -> let (imm, setup) = helpI e in (CImmExpr imm, setup)
 
   and helpI (e : tag expr) : (unit immexpr * unit anf_bind list) =
@@ -1556,7 +1562,7 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
             | _ -> TyClass(name, fields, method_binds, pos)
             end
     in
-    let new_let_bindings (bindings : ('a bind * 'a expr * 'a) list) (env : 'a typ envt) =
+    let rec new_let_bindings (bindings : ('a bind * 'a expr * 'a) list) (env : 'a typ envt) =
         (* for every binding ('a bind * 'a expr * 'a)
            for every bind BName of string * 'a typ * 'a
            if the expr is ENew then get the TyRecord from the class environment.
@@ -1569,15 +1575,14 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
                 match expr with
                   |ENew(class_name, loc) ->
                     let t = (find env class_name (string_of_sourcespan loc)) in
-                    (new_b @ [(BName(name, t, pos2), expr, pos1)], (name, t)::env)
+                    (new_b @ [(BName(name, t, pos2), helpE expr env, pos1)], (name, t)::env)
                   | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
               )
             | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
         )
         ([], env)
         bindings
-    in
-    let rec helpP (p : sourcespan program) (env : sourcespan typ envt) =
+    and helpP (p : sourcespan program) (env : sourcespan typ envt) =
       match p with
       | Program(tydecls, classes, declgroups, main, pos) ->
         let new_class_env = List.fold_left
@@ -1596,9 +1601,9 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
     and find_index x lst =
       match lst with
       | [] -> raise (Failure "update_bindings: fail to find field/method")
-      | bind::rest -> begin match bind with 
-                     | BName(name, _, _) when name = x -> 0      
-                     | _ -> 1 + find_index x rest 
+      | bind::rest -> begin match bind with
+                     | BName(name, _, _) when name = x -> 0
+                     | _ -> 1 + find_index x rest
                      end
     and helpC c env =
       match c with
@@ -1612,7 +1617,7 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
       match d with
       | DFun(funname, args, scheme, body, loc) ->
         DFun(funname, args, scheme, (helpE body env), loc)
-    and name_of_expr expr : string = 
+    and name_of_expr expr : string =
       match expr with
       | EId(id, _) -> id
       | _ -> "failwith: update_bindings - not an id"
@@ -1624,56 +1629,73 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
       | ELetRec (bindings, body , loc) ->
           let (new_bindings, env) = (new_let_bindings bindings env) in
           ELetRec(new_bindings, (helpE body env), loc)
+      | ESeq(e1, e2, loc) ->
+          ESeq((helpE e1 env), (helpE e2 env), loc)
       | ENew(classname, loc) ->
           let classtype = find env classname (string_of_sourcespan loc) in
           let (name, vars) = match classtype with
-              | TyClass(cname, fields, methods, loc) -> 
+              | TyClass(cname, fields, methods, loc) ->
                   (cname, List.map (fun _ -> ENumber(0, loc)) fields)
           in
           ETuple(EId(name, loc)::vars , loc)
-      | EDot(expr, id, loc) -> 
+      | EDot(expr, id, loc) ->
           let classname = name_of_expr expr in
           let classtype = find env classname (string_of_sourcespan loc) in
           let offset = match classtype with
-              | TyClass(cname, fields, methods, _) -> 
+              | TyClass(cname, fields, methods, _) ->
                   find_index id fields
           in
           EGetItem(expr, offset+1, 0, loc)
-      | EDotApp(expr, id, args, loc) -> 
+      | EDotApp(expr, id, args, loc) ->
           let classname = name_of_expr expr in
           let classtype = find env classname (string_of_sourcespan loc) in
-          let (name, offset) = 
+          let (name, offset) =
               match classtype with
-              | TyClass(cname, fields, methods, _) -> 
+              | TyClass(cname, fields, methods, _) ->
                   (cname, find_index id methods)
           in
-          let vtable = EId(name, loc) in 
+          let vtable = EId(name, loc) in
           let args = expr::args in
           EApp(EGetItem(vtable, offset+1, -1, loc), args, loc)
       | EDotSet(expr, id, newval, loc) ->
           let classname = name_of_expr expr in
           let classtype = find env classname (string_of_sourcespan loc) in
           let offset = match classtype with
-              | TyClass(cname, fields, methods, _) -> 
+              | TyClass(cname, fields, methods, _) ->
                   find_index id fields
           in
           ESetItem(expr, offset, 0, newval, loc)
-      | _ -> e
+      | ETuple(exprs, loc) ->
+          ETuple(List.map (fun e -> helpE e env) exprs, loc)
+      | EGetItem(expr, idx, size, loc) ->
+          EGetItem(helpE expr env, idx, size, loc)
+      | ESetItem(expr, idx, size, new_expr, loc) ->
+          ESetItem(helpE expr env, idx, size, helpE new_expr env, loc)
+      | EPrim1(prim1, expr, loc) ->
+          EPrim1(prim1, helpE expr env, loc)
+      | EPrim2(prim2, e1, e2, loc) ->
+          EPrim2(prim2, helpE e1 env, helpE e2 env, loc)
+      | EIf(cond, thn, els, loc) ->
+          EIf(helpE cond env, helpE thn env, helpE els env, loc)
+      | EApp(expr, exprs,  loc) ->
+          EApp(helpE expr env, List.map (fun e -> helpE e env) exprs,  loc)
+      | ELambda (binds, body, loc) ->
+          ELambda(binds, helpE body env,  loc)
+      | EAnnot (expr, typ, loc) ->
+          EAnnot(helpE expr env, typ,  loc)
+      | ENumber _ | EBool _ | ENil _ |EId _  -> e
     in helpP prog []
 ;;
 
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
-  |> (add_phase desugared_bindings desugar_bindings)
   |> (add_phase resolve_obj_types update_bindings)
-  (* |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth)) *)
-  (* |> (add_err_phase type_checked type_synth) *)
+  |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth))
   |> (add_phase tagged tag)
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)
   |> (add_phase anfed (fun p -> (atag (anf p))))
-  (* |> (add_phase desugared_classes desugar_classes) *)
   |>  debug
   |> (add_phase result compile_prog)
 ;;

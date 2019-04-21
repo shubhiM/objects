@@ -36,7 +36,7 @@ and 'a typ =
   | TyArr of 'a typ list * 'a typ * 'a
   | TyApp of 'a typ * 'a typ list * 'a
   | TyTup of 'a typ list * 'a
-  | TyClass of string * 'a bind list * 'a bind list * 'a 
+  | TyClass of string * 'a bind list * 'a bind list * 'a
 
 and 'a scheme =
   | SForall of string list * 'a typ * 'a
@@ -177,13 +177,13 @@ let rec map_tag_E (f : 'a -> 'b) (e : 'a expr) =
      let tag_lam = f a in
      ELambda(List.map (map_tag_B f) binds, map_tag_E f body, tag_lam)
  | EDot(expr, id, a) ->
-     EDot(map_tag_E f expr, id, f a)
+     failwith "EDot not available for tagging"
  | EDotApp(expr, id, args, a) ->
-     EDotApp(map_tag_E f expr, id, (List.map (fun arg -> (map_tag_E f arg)) args),  f a)
+     failwith "EDot not available for tagging"
  | EDotSet(expr, id, new_value, a) ->
-     EDotSet(map_tag_E f expr, id, map_tag_E f new_value, f a)
+    failwith "EDot not available for tagging"
  | ENew(class_name, a) ->
-     ENew(class_name, f a)
+     failwith "EDot not available for tagging"
 
 and map_tag_B (f : 'a -> 'b) b =
   match b with
@@ -375,7 +375,8 @@ let atag (p : 'a aprogram) : tag aprogram =
     | CLambda(args, body, _) ->
        let lam_tag = tag() in
        CLambda(args, helpA body, lam_tag)
-    | CDot(expr, id, idx,  _) ->
+    | _ -> failwith "Failed in atagging"
+    (* | CDot(expr, id, idx,  _) ->
        let dot_tag = tag() in
        CDot(helpI expr, id, idx, dot_tag)
     | CDotApp(expr, id, idx, args,  _) ->
@@ -386,7 +387,7 @@ let atag (p : 'a aprogram) : tag aprogram =
       CDotSet(helpI expr, id, idx, helpI new_value, dot_set_tag)
     | CNew(class_name, _) ->
       let new_class_tag = tag() in
-      CNew(class_name, new_class_tag)
+      CNew(class_name, new_class_tag) *)
   and helpI (i : 'a immexpr) : tag immexpr =
     match i with
     | ImmNil(_) -> ImmNil(tag())
