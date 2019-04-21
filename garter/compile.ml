@@ -1523,6 +1523,12 @@ err_nil_deref:%s
 
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in
   (* $heap is a mock parameter name, just so that compile_fun knows our_code_starts_here takes in 1 parameter *)
+     let data_section = 
+        List.fold_left 
+          (fun str c -> match c with 
+                            | AClass(name, _, _, _, _) -> (sprintf "%s%s dd 0\n" str name))
+        "section .data\n" classdecls 
+     in
      let (prologue, comp_main, epilogue) = compile_fun "our_code_starts_here" ["$heap"] body initial_env in
      let heap_start = [
         (* Set the global variable STACK_BOTTOM to EBP *)
@@ -1537,7 +1543,7 @@ err_nil_deref:%s
         IInstrComment(IAnd(Reg(ESI), HexConst(0xFFFFFFF8)), "by adding no more than 7 to it")
        ] in
      let main = (prologue @ heap_start (* @ (List.flatten comp_classdecls) *) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
-     sprintf "%s%s%s\n" prelude (to_asm main) suffix
+     sprintf "%s%s%s%s\n" data_section prelude (to_asm main) suffix
 ;;
 
 
@@ -1664,7 +1670,7 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
               | TyClass(cname, fields, methods, _) ->
                   find_index id fields
           in
-          ESetItem(expr, offset, 0, newval, loc)
+          ESetItem(expr, offset + 1, 0, newval, loc)
       | ETuple(exprs, loc) ->
           ETuple(List.map (fun e -> helpE e env) exprs, loc)
       | EGetItem(expr, idx, size, loc) ->
