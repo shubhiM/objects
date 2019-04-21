@@ -1,0 +1,31 @@
+You should plan on explaining your feature, what its semantics are, what implementation choices you made, what design consequences there were, etc. I'm not interested in individually complicated lines of code, though I care about the overall readability and clarity of your implementation.  And you should expect that I'll ask a bunch of clarifying questions, anyway :-)
+
+
+what implementation choices you made?
+  - Syntax choice
+    what was changed in parser?
+
+
+  - Objects and classes representation
+  - Mutation of class fields
+  - Single vs Multple inheritance
+  - TyClass {, } - positive
+  - Desugar the object oriented AST to tuple expressions
+  - storing class descriptors in section .data as globals
+  - Overridding
+
+
+ Semantics:
+   mutation works -> object
+   get
+   semantics inheritance of field_names
+   Overridding
+
+   
+  what design consequences there were, etc.?
+    -   classes definition comes before global functions
+      base class comes before sub class
+
+    - Support for Multiple inheritance not possible in future.
+    - Support for monkey patching in future is possible
+    - Support for type inference for class objects is possible in future.
