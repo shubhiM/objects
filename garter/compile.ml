@@ -1535,28 +1535,28 @@ err_nil_deref:%s
 ;;
 
 
-let update_bindings (prog : sourcespan program) (env : sourcespan typ envt) : sourcespan program =
-    let type_of_this (cls : sourcespan class) env =
+let update_bindings (prog : sourcespan program) : sourcespan program =
+    let type_of_this (cls : 'a classdecl) (env : 'a typ envt) =
       match cls with
         | Class(name, base, fields, methods, pos) ->
             let method_binds = List.map
               (fun f ->
                 match f with
-                | DFun(name, _, _, _, pos) -> BName(name , TyBlank(pos), pos)
-              )
-            methods
+                | DFun(name, _, _, _, pos) -> BName(name , TyBlank(pos), pos))
+              methods
             in
-            match base with
-             | Some(base_name) ->
+            begin match base with
+            | Some(base_name) ->
                    (
                       let t = (find env base_name pos) in
                       match t with
                           | TyClass(f, m, loc) -> TyClass((f @ fields), (m @ method_binds), pos)
                           | _ -> raise (InternalCompilerError "infer_class : undefined class ")
                    )
-             | _ -> TyClass(fields, method_binds, pos)
+            | _ -> TyClass(fields, method_binds, pos)
+            end
     in
-    let new_let_bindings bindings env =
+    let new_let_bindings (bindings : ('a bind * 'a expr * 'a) list) (env : 'a typ envt) =
         (* for every binding ('a bind * 'a expr * 'a)
            for every bind BName of string * 'a typ * 'a
            if the expr is ENew then get the TyRecord from the class environment.
@@ -1588,11 +1588,10 @@ let update_bindings (prog : sourcespan program) (env : sourcespan typ envt) : so
       match c with
       | Class(name, base, fields, methods, tag) ->
         (* Add this class to the env *)
-        (* let type_of_this = (get_type c env) in
-        let new_env = (name, type_of_this)::env in *)
+        let class_type = (type_of_this c env) in
+        let new_env = (name, class_type)::env in
         (* TODO: first test the simple portion *)
-        let new_env = env in
-        let new_methods = List.map (fun m -> (helpD new_env m)) methods in
+        let new_methods = List.map (fun m -> (helpD m new_env)) methods in
         Class(name, base, fields, new_methods, tag)
     and helpG g env =
       List.map (fun d -> (helpD d env)) g
@@ -1600,16 +1599,16 @@ let update_bindings (prog : sourcespan program) (env : sourcespan typ envt) : so
       match d with
       | DFun(funname, args, scheme, body, tag) ->
         DFun(funname, args, scheme, (helpE body env), tag)
-    and helpE e env =
+    and helpE (e : 'a expr) (env : 'a typ envt) : 'a expr =
       match e with
       | ELet (bindings, body, tag) ->
         let new_bindings = (new_let_bindings bindings env) in
-        ELet(new_bindings, (help body env), tag)
+        ELet(new_bindings, (helpE body env), tag)
       | ELetRec (bindings, body , tag) ->
         let new_bindings = (new_let_bindings bindings env) in
-        ELetRec(new_bindings,(help body env), tag)
+        ELetRec(new_bindings, (helpE body env), tag)
       | _ -> e
-    in helpP prog
+    in helpP prog []
 ;;
 
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
@@ -1618,6 +1617,7 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   |> (add_phase desugared_bindings desugar_bindings)
   (* |> (if !skip_typechecking then no_op_phase else (add_err_phase type_checked type_synth)) *)
   (* |> (add_err_phase type_checked type_synth) *)
+  |> (add_phase resolve_obj_types update_bindings)
   |> (add_phase tagged tag)
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)

@@ -366,8 +366,7 @@ changes in the parser, addition of new forms
 
 #### Compilation of Objects
 
-
-We store class information in class descriptors, which stores class methods. If a class is inheritated from a base class, the class descriptor should have a pointer to the class descriptor of its base class. For a class
+We store class information in class descriptor, which stores class methods. The address of class descriptor are stored as global variables. 
 
 ```
 class Base
@@ -380,11 +379,9 @@ end
 ```
 A class descriptor should be created on the heap:
 ```
-| base | N | bar | baz |
+| N | Base_bar | Base_baz |
 ```
-where base is a pointer to its base class, N is the number of class methods. base should be null if the class has no base class.
-
-To handle single inheritance, the class descriptor of the inheritated class should have a pointer to the base class. For the class Der,
+N is the number of class methods. 
 
 ```
 class Der extends Base
@@ -398,7 +395,7 @@ end
 
 Its class descriptor should be like
 ```
-| Base | N | bar | baz | der |
+| N | Base_baz | Der_bar | Der_der |
 ```
 where bar should point to the method defined in Der instead of Base.
 

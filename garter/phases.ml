@@ -19,6 +19,7 @@ type phase =
   | WellFormed of sourcespan program
   | DesugaredBindings of sourcespan program
   | TypeChecked of sourcespan program
+  | ResolveObjTypes of sourcespan program
   | Renamed of tag program
   | Tagged of tag program
   | DesugaredDecls of tag program
@@ -33,6 +34,7 @@ let source s = Source s
 let parsed p = Parsed p
 let well_formed p = WellFormed p
 let desugared_bindings p = DesugaredBindings p
+let resolve_obj_types p = ResolveObjTypes p
 let renamed p = Renamed p
 let tagged p = Tagged p
 let type_checked p = TypeChecked p
@@ -107,6 +109,7 @@ let print_trace (trace : phase list) : string list =
     | Parsed _ -> "Parsed"
     | DesugaredBindings _ -> "Desugared bindings"
     | WellFormed _ -> "Well-formed"
+    | ResolveObjTypes _ -> "ResolveObjTypes"
     | Renamed  _ -> "Renamed"
     | Tagged _ -> "Tagged"
     | TypeChecked _ -> "TypeChecked"
@@ -120,6 +123,7 @@ let print_trace (trace : phase list) : string list =
     | WellFormed p -> string_of_program p
     | Renamed p -> string_of_program p
     | TypeChecked p -> ast_of_program p
+    | ResolveObjTypes p -> ast_of_program p
     | DesugaredDecls p -> ast_of_program p
     | Tagged p -> string_of_program_with (fun tag -> sprintf "@%d" tag) p
     | ANFed p -> string_of_aprogram_with (fun tag -> sprintf "@%d" tag)  p
