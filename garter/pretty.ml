@@ -375,8 +375,13 @@ let rec format_typ (fmt : Format.formatter) (print_a : 'a -> string) (t : 'a typ
      close_angle fmt; pp_print_string fmt (maybe_angle (print_a a)); pp_print_string fmt " "
   | TyTup(tys, a) ->
      open_paren fmt; print_list fmt help tys print_star_sep; close_paren fmt
-;;
-let rec format_bind (fmt : Format.formatter) (print_a : 'a -> string) (b : 'a bind) : unit =
+  | TyClass(ftys, mtys, a) ->
+        open_paren fmt;
+        print_list fmt (fun fmt -> format_bind fmt print_a) ftys print_comma_sep;
+        pp_print_string fmt ", ";
+        print_list fmt (fun fmt -> format_bind fmt print_a) mtys print_comma_sep;
+        close_paren fmt
+and format_bind (fmt : Format.formatter) (print_a : 'a -> string) (b : 'a bind) : unit =
   match b with
   | BBlank(t, a) -> pp_print_string fmt "#BLANK# : "; format_typ fmt print_a t; pp_print_string fmt (maybe_angle (print_a a))
   | BName(x, typ, a) ->

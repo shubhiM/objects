@@ -36,7 +36,7 @@ and 'a typ =
   | TyArr of 'a typ list * 'a typ * 'a
   | TyApp of 'a typ * 'a typ list * 'a
   | TyTup of 'a typ list * 'a
-  | TyClass of 'a bind list * 'a bind list * 'a 
+  | TyClass of 'a bind list * 'a bind list * 'a
 
 and 'a scheme =
   | SForall of string list * 'a typ * 'a

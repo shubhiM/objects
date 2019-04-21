@@ -1536,7 +1536,7 @@ err_nil_deref:%s
 
 
 let update_bindings (prog : sourcespan program) : sourcespan program =
-    let type_of_this (cls : 'a classdecl) (env : 'a typ envt) =
+    let type_of_this (cls : sourcespan classdecl) (env : sourcespan typ envt) =
       match cls with
         | Class(name, base, fields, methods, pos) ->
             let method_binds = List.map
@@ -1548,7 +1548,7 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
             begin match base with
             | Some(base_name) ->
                    (
-                      let t = (find env base_name pos) in
+                      let t = (find env base_name (string_of_sourcespan pos)) in
                       match t with
                           | TyClass(f, m, loc) -> TyClass((f @ fields), (m @ method_binds), pos)
                           | _ -> raise (InternalCompilerError "infer_class : undefined class ")
@@ -1568,7 +1568,7 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
               (
                 match expr with
                   |ENew(class_name, loc) ->
-                    let t = (find env class_name loc) in
+                    let t = (find env class_name (string_of_sourcespan loc)) in
                     new_b @ [(BName(name, t, pos2), expr, pos1)]
                   | _ -> new_b @ [(bind, expr, pos1)] (* keep as it is *)
               )
@@ -1577,21 +1577,30 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
         []
         bindings
     in
-    let rec helpP p env =
+    let rec helpP (p : sourcespan program) (env : sourcespan typ envt) =
       match p with
       | Program(tydecls, classes, declgroups, main, pos) ->
-        let new_classes = List.map (fun c -> (helpC c env)) classes in
-        let new_declgroups = List.map (fun g -> (helpG g env)) declgroups in
-        let new_main = helpE main env in
-        Program(tydecls, new_classes, new_declgroups, new_main, pos)
+        let new_class_env = List.fold_left
+          (fun env cls ->
+              match cls with
+              |Class(name, base, fields, methods, tag) ->
+               let class_type = (type_of_this cls env) in
+               (name, class_type)::env)
+        []
+        classes
+        in
+        (* List.map (fun c -> (helpC c env)) classes in *)
+        let new_declgroups = List.map (fun g -> (helpG g new_class_env)) declgroups in
+        let new_main = helpE main new_class_env in
+        Program(tydecls, classes, new_declgroups, new_main, pos)
     and helpC c env =
       match c with
       | Class(name, base, fields, methods, tag) ->
         (* Add this class to the env *)
-        let class_type = (type_of_this c env) in
-        let new_env = (name, class_type)::env in
+        (* let class_type = (type_of_this c env) in *)
+        (* let new_env = (name, class_type)::env in *)
         (* TODO: first test the simple portion *)
-        let new_methods = List.map (fun m -> (helpD m new_env)) methods in
+        let new_methods = List.map (fun m -> (helpD m env)) methods in
         Class(name, base, fields, new_methods, tag)
     and helpG g env =
       List.map (fun d -> (helpD d env)) g
@@ -1599,10 +1608,11 @@ let update_bindings (prog : sourcespan program) : sourcespan program =
       match d with
       | DFun(funname, args, scheme, body, tag) ->
         DFun(funname, args, scheme, (helpE body env), tag)
-    and helpE (e : 'a expr) (env : 'a typ envt) : 'a expr =
+    and helpE (e : sourcespan expr) (env : sourcespan typ envt) : 'a expr =
       match e with
       | ELet (bindings, body, tag) ->
         let new_bindings = (new_let_bindings bindings env) in
+        (* printf (ExtString.String.join ", " (List.map string_of_binding new_bindings)); *)
         ELet(new_bindings, (helpE body env), tag)
       | ELetRec (bindings, body , tag) ->
         let new_bindings = (new_let_bindings bindings env) in

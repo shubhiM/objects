@@ -6,15 +6,9 @@ class Bar:
 end
 
 class Foo extends Bar:
-	field x
-	field y
-	method f(self):
-		print(self)
-	method b(self, a, b, c):
-		a + b * c
+  field c
+  method sub(self):
+    1
 end
 
-def add(a, b):
-    a + b
-
-let x = new Foo() in x.b(1,2,3) + add(1, 2)
+let x : Foo = new Foo() in x.a
