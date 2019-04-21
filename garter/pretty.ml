@@ -253,12 +253,12 @@ and string_of_cexpr_with (depth : int) (print_a : 'a -> string) (c : 'a cexpr) :
      sprintf "(lam(%s) %s)%s" (ExtString.String.join ", " args) (string_of_aexpr body) (print_a a)
   | CImmExpr i -> string_of_immexpr i
   | CNew(classname, a) -> sprintf "new %s()" classname
-  | CDot(expr, fieldname, a) -> sprintf "%s.%s" (string_of_immexpr expr) fieldname
-  | CDotApp(expr, methodname, args, a) ->
-    sprintf "(%s.%s(%s))%s" (string_of_immexpr expr) methodname
+  | CDot(expr,field_name, idx, a) -> sprintf "%s.%s" (string_of_immexpr expr) field_name
+  | CDotApp(expr,method_name, idx, args, a) ->
+    sprintf "(%s.%s(%s))%s" (string_of_immexpr expr) method_name
      (ExtString.String.join ", " (List.map string_of_immexpr args)) (print_a a)
-  | CDotSet(expr1, fieldname, expr2, a) ->
-      sprintf "%s.%s := %s" (string_of_immexpr expr1) fieldname (string_of_immexpr expr2)
+  | CDotSet(expr1,field_name, idx, expr2, a) ->
+      sprintf "%s.%s := %s" (string_of_immexpr expr1) field_name (string_of_immexpr expr2)
 and string_of_immexpr_with (print_a : 'a -> string) (i : 'a immexpr) : string =
   match i with
   | ImmNil(a) -> "nil" ^ (print_a a)

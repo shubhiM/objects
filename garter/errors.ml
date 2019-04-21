@@ -24,14 +24,14 @@ type reason =
   | Message of string
   | Unify of string * sourcespan typ * sourcespan typ
   | Instantiate of string * sourcespan scheme
-                                     
+
 exception NoType of string * sourcespan (* name, where defined *)
 exception ShouldBeFunction of string * sourcespan * sourcespan typ (* name, where defined, actual typ *)
 exception TypeMismatch of sourcespan * sourcespan typ * sourcespan typ * reason list (* where, expected, actual *)
 exception DeclArity of string * int * int * sourcespan (* name, num args, num types, where defined *)
 
 
-  
+
 
 (* Stringifies a list of compilation errors *)
 let print_errors (exns : exn list) : string list =
@@ -98,6 +98,10 @@ let print_errors (exns : exn list) : string list =
            | ESetItem(_, _, _, _, t) -> t
            | ESeq(_, _, t) -> t
            | ELambda(_, _, t) -> t
+           | EDot(_, _, t) -> t
+           | EDotApp(_, _, _, t) -> t
+           | EDotSet(_, _, _, t) -> t
+           | ENew(_, t) -> t
          in
          let print_reason r =
            match r with
@@ -114,4 +118,3 @@ let print_errors (exns : exn list) : string list =
          sprintf "%s" (Printexc.to_string e)
     ) exns
 ;;
-

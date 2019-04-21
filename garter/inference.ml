@@ -109,7 +109,6 @@ let rec ftv_type (t : 'a typ) : StringSet.t =
     List.fold_right (fun t ftvs -> StringSet.union (ftv_type t) ftvs)
                     typs
                     StringSet.empty
-  | TyClass _ -> StringSet.empty
 ;;
 (* ftv_scheme:
   The set of free type variables of a type scheme is the set of free type variables of its type component,
@@ -162,7 +161,6 @@ let rec subst_var_typ (((tyvar : string), (to_typ : 'a typ)) as sub) (in_typ : '
   | TyTup(typs, tag) ->
     let typs_subst = List.map (fun typ -> subst_var_typ sub typ) typs in
       TyTup(typs_subst, tag)
-  |TyClass _ -> in_typ
 ;;
 let subst_var_scheme ((tyvar, to_typ) as sub) scheme =
   match scheme with (* ?? *)
@@ -243,8 +241,7 @@ let rec unify (t1 : 'a typ) (t2 : 'a typ) (sub : 'a typ subst) (loc : sourcespan
     end
     | (TyTup(_, _), TyCon(_, _)) ->
       unify t2 t1 sub loc reasons
-    | (TyClass(_, _, _), TyCon(_, _)) ->
-        unify t2 t1 sub loc reasons
+
     | _ -> raise (TypeMismatch(loc, t2, t1, reasons))
 ;;
 
@@ -265,24 +262,6 @@ let rec unblank (t : 'a typ) : 'a typ =
     let args = List.map unblank args in TyApp(t, args, tag)
   | TyTup(typs, tag) ->
     let typs = List.map unblank typs in TyTup(typs, tag)
-  | TyClass(f_typs, m_typs, tag) ->
-    let f_typs = List.map
-      (fun field ->
-        match field with
-        | BName(name, typ , tag) -> BName(name, unblank typ, tag)
-        | _ -> raise (InternalCompilerError "class bindings can be of only BName type")
-      )
-    f_typs
-    in
-    let m_typs = List.map
-      (fun m ->
-        match m with
-        | BName(name, typ , tag) -> BName(name, unblank typ, tag)
-        | _ -> raise (InternalCompilerError "class bindings can be of only BName type")
-      )
-    m_typs
-    in
-    TyClass(f_typs, m_typs, tag)
 ;;
 
 let instantiate (s : 'a scheme) : 'a typ =
@@ -308,7 +287,6 @@ let loc_of_typ t =
   | TyArr(_, _, loc) -> loc
   | TyApp(_, _, loc) -> loc
   | TyTup(_, loc) -> loc
-  | TyClass(_, _, loc) -> loc
 ;;
 (* generalize: turns a given type into a type scheme, quantifying over all type
    variables that are free in the type, but not in the environment.*)
@@ -389,14 +367,7 @@ let rec infer_exp
     let a = newTyVar "blank" loc in
     let _ = infer_exp env a e1 s reasons in
       infer_exp env t e2 s reasons
-  | ENew(class_name, loc) ->
-    failwith "Enew type should be of type class_name"
-  | EDot(expr, field_name, loc) ->
-    failwith "EDot should be type of field_name"
-  | EDotApp(expr, method_name, args, loc) ->
-    failwith "EDotApp should be of type method"
-  | EDotSet(expr, field_name, new_value, loc) ->
-    failwith "Should be of type record, semantically we will return the same object, just modified"
+
   | ETuple(exprs, loc) ->
     let (s', t_typs) =
       List.fold_left
@@ -467,6 +438,7 @@ let rec infer_exp
         let lambda_env = binds_to_env arg_binds s env in
         let lambda_env = apply_subst_env s1 lambda_env in
         infer_exp lambda_env b e s1 reasons
+| EDot _ | EDotApp _ | EDotSet _ | ENew _ -> []
 ;;
 
 (* infer_group: inter types for function gourps that may be mutually recursive *)
@@ -491,52 +463,11 @@ let infer_group env (g : sourcespan decl list) (s : 'a typ subst)
             | None    -> failwith "infer_group: undefined function"
         in
         let f_typ = instantiate scheme in
-
         let s' = infer_decl funenv env f_typ decl s [] in
              (f_name, apply_subst_typ s' f_typ)::f_typs
       ) [] g
     in
 *)    env
-;;
-
-let rec infer_class
-  (c : sourcespan classdecl)
-  (class_env : sourcespan typ envt)
-  (scheme_env : sourcespan scheme envt)
-  : sourcespan typ =
-
- (* Gets the method types for creating Tyclass *)
-  let method_types methods class_name =
-    (let (substs, method_typ_binds) = List.fold_left
-         (fun (subs, binds) decl ->
-           match decl with
-           | DFun(fun_name, args, scheme, body, loc) ->
-             let body = ELambda(args, body, loc) in
-             let sym = sprintf "method %s.%s" class_name fun_name in
-             let a = TyVar(gensym sym, loc) in
-             let s = infer_exp scheme_env a body subs [] in
-             let fun_typ =  apply_subst_typ s a in
-             ((compose_subst s subs), binds @ [BName(fun_name, fun_typ, loc)])
-       )
-     ([], [])
-      methods
-      in
-      method_typ_binds
-  )
-  in
-
-  match c with
-  |Class(class_name, base, fields, methods, loc) ->
-       let method_typ_binds = (method_types methods class_name) in
-       match base with
-        | Some(name) ->
-              (
-                 let c_type = (StringMap.find_opt name class_env) in
-                  match c_type with
-                     | None -> raise (InternalCompilerError "infer_class : undefined class ")
-                     | Some(TyClass(f, m, loc)) -> TyClass(f @ fields, m @ method_typ_binds, loc)
-              )
-        | _ -> TyClass(fields, method_typ_binds, loc)
 ;;
 
 let infer_prog env (p : sourcespan program) : 'a typ =
@@ -551,21 +482,6 @@ let infer_prog env (p : sourcespan program) : 'a typ =
               let b = TyTup(typs, loc) in
               compose_subst [(tyname, b)] s
         ) [] typedecls
-      in
-
-      (* Treating classes as new types *)
-      (* create a new environment of TyClass envt *)
-      (* Use this new environment to typecheck the setters and getters on class objects *)
-
-      let class_env = List.fold_left
-        (fun class_env cls ->
-          match cls with
-          | Class(name,base,fields,methods,loc)  ->
-              let class_type = (infer_class cls class_env initial_env) in
-              (StringMap.add name class_type class_env)
-      )
-      StringMap.empty
-      classdecls
       in
 
       (* type the declgroups *)

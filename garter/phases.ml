@@ -23,7 +23,9 @@ type phase =
   | Tagged of tag program
   | DesugaredDecls of tag program
   | ANFed of tag aprogram
+  | Desugaredclasses of tag aprogram
   | Result of string
+
 ;;
 (* These functions simply apply a phase constructor, because OCaml
    doesn't allow you to pass data-constructors as first-class values *)
@@ -36,6 +38,7 @@ let tagged p = Tagged p
 let type_checked p = TypeChecked p
 let desugared_decls p = DesugaredDecls p
 let anfed p = ANFed p
+let desugared_classes p = Desugaredclasses p
 let result s = Result s
 ;;
 
@@ -47,7 +50,7 @@ type failure = exn list * phase list
    or a bunch of errors *)
 type 'a fallible = ('a, exn list) result
 
-(* An overall pipeline returns either a final result (of type 'a) and 
+(* An overall pipeline returns either a final result (of type 'a) and
    a list of prior phases, or it returns a failure as above *)
 type 'a pipeline = ('a * phase list, failure) result
 (* Adds another phase to the growing pipeline, using a function that might fail.
@@ -120,13 +123,14 @@ let print_trace (trace : phase list) : string list =
     | DesugaredDecls p -> ast_of_program p
     | Tagged p -> string_of_program_with (fun tag -> sprintf "@%d" tag) p
     | ANFed p -> string_of_aprogram_with (fun tag -> sprintf "@%d" tag)  p
+    | Desugaredclasses p -> string_of_aprogram_with (fun tag -> sprintf "@%d" tag)  p
     | Result s -> s in
   List.mapi (fun n p -> sprintf "Phase %d (%s):\n%s" n (phase_name p) (string_of_phase p)) (List.rev trace)
 ;;
 
 (* add debug to pipeline to print trace to stderr *)
-let debug (cur_pipeline : 'a pipeline) : 'a pipeline = 
-    let strings_of_trace = 
+let debug (cur_pipeline : 'a pipeline) : 'a pipeline =
+    let strings_of_trace =
       match cur_pipeline with
       | Error(errs, trace) -> print_trace trace
       | Ok(cur_val, trace) -> print_trace trace

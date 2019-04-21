@@ -515,15 +515,16 @@ let anf (p : tag program) : unit aprogram =
        (body_ans, (BLetRec (List.combine names new_binds)) :: body_setup)
     |EDot(expr, id, tag) ->
       let (expr_imm, expr_setup) = helpI expr in
-      (CDot(expr_imm, id, ()), expr_setup)
-    |EDotApp(expr, id, args,  tag) ->
+      (* Set the offset to 0 for now *)
+      (CDot(expr_imm, id, 0, ()), expr_setup)
+    |EDotApp(expr, id, args, tag) ->
         let (expr_imm, expr_setup) = helpI expr in
         let (new_args, new_setup) = List.split (List.map helpI args) in
-        (CDotApp(expr_imm, id, new_args, ()), expr_setup @ List.concat new_setup)
+        (CDotApp(expr_imm, id, 0, new_args, ()), expr_setup @ List.concat new_setup)
     |EDotSet(expr, id, new_val, tag) ->
       let (expr_imm, expr_setup) = helpI expr in
       let (new_imm, new_setup) = helpI new_val in
-      (CDotSet(expr_imm, id, new_imm, ()), expr_setup @ new_setup)
+      (CDotSet(expr_imm, id, 0, new_imm, ()), expr_setup @ new_setup)
     |ENew(class_name, tag) -> (CNew(class_name, ()), [])
     | _ -> let (imm, setup) = helpI e in (CImmExpr imm, setup)
 
@@ -537,17 +538,17 @@ let anf (p : tag program) : unit aprogram =
     | EDot(expr, id, tag) ->
       let tmp = sprintf "dot_%d" tag in
       let (expr_imm, expr_setup) = helpI expr in
-      (ImmId(tmp, ()), expr_setup @ [BLet(tmp, CDot(expr_imm, id, ()))])
+      (ImmId(tmp, ()), expr_setup @ [BLet(tmp, CDot(expr_imm, id, 0, ()))])
     | EDotApp(expr, id, args, tag) ->
         let tmp = sprintf "dotapp_%d" tag in
         let (expr_imm, expr_setup) = helpI expr in
         let (new_args, new_setup) = List.split (List.map helpI args) in
-        (ImmId(tmp, ()), expr_setup @ (List.concat new_setup) @ [BLet(tmp, CDotApp(expr_imm, id, new_args, ()))])
+        (ImmId(tmp, ()), expr_setup @ (List.concat new_setup) @ [BLet(tmp, CDotApp(expr_imm, id, 0, new_args, ()))])
     | EDotSet(expr, id, new_val, tag) ->
       let tmp = sprintf "dotset_%d" tag in
       let (expr_imm, expr_setup) = helpI expr in
       let (new_imm, new_setup) = helpI new_val in
-      (ImmId(tmp, ()), expr_setup @ new_setup @ [BLet(tmp, CDotSet(expr_imm, id, new_imm, ()))])
+      (ImmId(tmp, ()), expr_setup @ new_setup @ [BLet(tmp, CDotSet(expr_imm, id, 0, new_imm, ()))])
     | ENew(class_name, tag) ->
       let tmp = sprintf "new_%d" tag in
       (ImmId(tmp, ()), [BLet(tmp, CNew(class_name, ()))])
@@ -662,9 +663,9 @@ let free_vars_E (e : 'a aexpr) (rec_binds : string list) : string list =
     | CGetItem(tup, _, _) -> helpI bound tup
     | CSetItem(tup, _, rhs, _) -> helpI bound tup @ helpI bound rhs
     | CImmExpr i -> helpI bound i
-    | CDot(expr, idx, _) -> helpI bound expr
-    | CDotApp(expr, idx, args, _) -> helpI bound expr @ (List.flatten (List.map (fun arg -> helpI bound arg) args))
-    | CDotSet(expr, idx, newval, _) -> helpI bound expr @ helpI bound newval
+    | CDot(expr, id, idx, _) -> helpI bound expr
+    | CDotApp(expr, id, idx, args, _) -> helpI bound expr @ (List.flatten (List.map (fun arg -> helpI bound arg) args))
+    | CDotSet(expr,id, idx, newval, _) -> helpI bound expr @ helpI bound newval
     | CNew(_, _) -> []
   and helpI (bound : string list) (e : 'a immexpr) : string list =
     match e with
@@ -692,11 +693,6 @@ let rec free_typ_tyvars typ =
 and free_scheme_tyvars (args, typ) =
   List.fold_left ExtList.List.remove (List.sort_uniq String.compare (free_typ_tyvars typ)) args
 ;;
-
-
-
-
-
 
 let reserve size tag =
   let ok = sprintf "$memcheck_%d" tag in
@@ -1059,13 +1055,13 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
      | EqB -> failwith "compile_cexpr: EqB not implemented"
      end
   | CImmExpr(immexpr) -> [ IMov(Reg(EAX), compile_imm immexpr env) ]
-  | CDot(immexpr, field_name, tag) ->
+  | CDot(immexpr, field_name, idx, tag) ->
       (* TODO: "CDot To Be Implemented" *)
      []
-  | CDotApp(immexpr, method_name, immexprs, tag) ->
+  | CDotApp(immexpr, method_name, idx, immexprs, tag) ->
       (* TODO: "CDotApp To Be Implemented" *)
      []
-  | CDotSet(immexpr1, field_name, immexpr2, tag) ->
+  | CDotSet(immexpr1, field_name, idx, immexpr2, tag) ->
       (* TODO: "CDotSet To Be Implemented" *)
       []
   | CNew(class_name, tag) ->
@@ -1540,6 +1536,10 @@ err_nil_deref:%s
 
 ;;
 
+
+let desugar_classes (ap : tag aprogram) : tag aprogram =
+    failwith "desugar_classes not implemented yet!!"
+
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
   |> (add_err_phase well_formed is_well_formed)
@@ -1550,6 +1550,7 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)
   |> (add_phase anfed (fun p -> (atag (anf p))))
+  |> (add_phase desugared_classes desugar_classes)
   |>  debug
   |> (add_phase result compile_prog)
 ;;

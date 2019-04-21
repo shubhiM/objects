@@ -36,7 +36,7 @@ and 'a typ =
   | TyArr of 'a typ list * 'a typ * 'a
   | TyApp of 'a typ * 'a typ list * 'a
   | TyTup of 'a typ list * 'a
-  | TyClass of 'a bind list * 'a bind list * 'a (* Type check classes *)
+  (* | TyClass of 'a bind list * 'a bind list * 'a *)
 
 and 'a scheme =
   | SForall of string list * 'a typ * 'a
@@ -98,9 +98,9 @@ and 'a cexpr = (* compound expressions *)
   | CSetItem of 'a immexpr * int * 'a immexpr * 'a
   | CLambda of string list * 'a aexpr * 'a
   | CNew of string * 'a
-  | CDot of 'a immexpr * string * 'a
-  | CDotApp of 'a immexpr * string * 'a immexpr list * 'a
-  | CDotSet of 'a immexpr * string * 'a immexpr * 'a
+  | CDot of 'a immexpr * string * int * 'a (* keeping the offset only *)
+  | CDotApp of 'a immexpr * string * int * 'a immexpr list * 'a
+  | CDotSet of 'a immexpr * string * int * 'a immexpr * 'a
 and 'a aexpr = (* anf expressions *)
   | ASeq of 'a cexpr * 'a aexpr * 'a
   | ALet of string * 'a cexpr * 'a aexpr * 'a
@@ -374,15 +374,15 @@ let atag (p : 'a aprogram) : tag aprogram =
     | CLambda(args, body, _) ->
        let lam_tag = tag() in
        CLambda(args, helpA body, lam_tag)
-    | CDot(expr, id, _) ->
+    | CDot(expr, id, idx,  _) ->
        let dot_tag = tag() in
-       CDot(helpI expr, id, dot_tag)
-    | CDotApp(expr, id, args,  _) ->
+       CDot(helpI expr, id, idx, dot_tag)
+    | CDotApp(expr, id, idx, args,  _) ->
         let dotapp_tag = tag() in
-        CDotApp(helpI expr, id, List.map helpI args, dotapp_tag)
-    | CDotSet(expr, id, new_value, _) ->
+        CDotApp(helpI expr, id, idx, List.map helpI args, dotapp_tag)
+    | CDotSet(expr, id, idx, new_value, _) ->
       let dot_set_tag = tag() in
-      CDotSet(helpI expr, id, helpI new_value, dot_set_tag)
+      CDotSet(helpI expr, id, idx, helpI new_value, dot_set_tag)
     | CNew(class_name, _) ->
       let new_class_tag = tag() in
       CNew(class_name, new_class_tag)
