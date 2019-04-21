@@ -1532,13 +1532,85 @@ err_nil_deref:%s
        ] in
      let main = (prologue @ heap_start @ (List.flatten comp_classdecls) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
      sprintf "%s%s%s\n" prelude (to_asm main) suffix
-
-
 ;;
 
 
-let desugar_classes (ap : tag aprogram) : tag aprogram =
-    failwith "desugar_classes not implemented yet!!"
+let update_bindings (prog : sourcespan program) (env : sourcespan typ envt) : sourcespan program =
+    let type_of_this (cls : sourcespan class) env =
+      match cls with
+        | Class(name, base, fields, methods, pos) ->
+            let method_binds = List.map
+              (fun f ->
+                match f with
+                | DFun(name, _, _, _, pos) -> BName(name , TyBlank(pos), pos)
+              )
+            methods
+            in
+            match base with
+             | Some(base_name) ->
+                   (
+                      let t = (find env base_name pos) in
+                      match t with
+                          | TyClass(f, m, loc) -> TyClass((f @ fields), (m @ method_binds), pos)
+                          | _ -> raise (InternalCompilerError "infer_class : undefined class ")
+                   )
+             | _ -> TyClass(fields, method_binds, pos)
+    in
+    let new_let_bindings bindings env =
+        (* for every binding ('a bind * 'a expr * 'a)
+           for every bind BName of string * 'a typ * 'a
+           if the expr is ENew then get the TyRecord from the class environment.
+        *)
+        List.fold_left
+        (fun new_b (bind, expr, pos1) ->
+            match bind with
+            | BName(name, typ, pos2) ->
+              (
+                match expr with
+                  |ENew(class_name, loc) ->
+                    let t = (find env class_name loc) in
+                    new_b @ [(BName(name, t, pos2), expr, pos1)]
+                  | _ -> new_b @ [(bind, expr, pos1)] (* keep as it is *)
+              )
+            | _ -> new_b @ [(bind, expr, pos1)] (* keep as it is *)
+        )
+        []
+        bindings
+    in
+    let rec helpP p env =
+      match p with
+      | Program(tydecls, classes, declgroups, main, pos) ->
+        let new_classes = List.map (fun c -> (helpC c env)) classes in
+        let new_declgroups = List.map (fun g -> (helpG g env)) declgroups in
+        let new_main = helpE main env in
+        Program(tydecls, new_classes, new_declgroups, new_main, pos)
+    and helpC c env =
+      match c with
+      | Class(name, base, fields, methods, tag) ->
+        (* Add this class to the env *)
+        (* let type_of_this = (get_type c env) in
+        let new_env = (name, type_of_this)::env in *)
+        (* TODO: first test the simple portion *)
+        let new_env = env in
+        let new_methods = List.map (fun m -> (helpD new_env m)) methods in
+        Class(name, base, fields, new_methods, tag)
+    and helpG g env =
+      List.map (fun d -> (helpD d env)) g
+    and helpD d env =
+      match d with
+      | DFun(funname, args, scheme, body, tag) ->
+        DFun(funname, args, scheme, (helpE body env), tag)
+    and helpE e env =
+      match e with
+      | ELet (bindings, body, tag) ->
+        let new_bindings = (new_let_bindings bindings env) in
+        ELet(new_bindings, (help body env), tag)
+      | ELetRec (bindings, body , tag) ->
+        let new_bindings = (new_let_bindings bindings env) in
+        ELetRec(new_bindings,(help body env), tag)
+      | _ -> e
+    in helpP prog
+;;
 
 let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   prog
@@ -1550,7 +1622,7 @@ let compile_to_string (prog : sourcespan program pipeline) : string pipeline =
   |> (add_phase renamed rename_and_tag)
   |> (add_phase desugared_decls defn_to_letrec)
   |> (add_phase anfed (fun p -> (atag (anf p))))
-  |> (add_phase desugared_classes desugar_classes)
+  (* |> (add_phase desugared_classes desugar_classes) *)
   |>  debug
   |> (add_phase result compile_prog)
 ;;
