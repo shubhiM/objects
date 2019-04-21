@@ -27,7 +27,7 @@ type arg =
   | Sized of size * arg
   | Label of string
   | LabelContents of string
-
+  
 type instruction =
   | IMov of arg * arg
 

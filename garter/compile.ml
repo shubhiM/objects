@@ -1079,10 +1079,10 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
 
       (4 bytes)    (4 bytes)  (4 bytes)          (4 bytes)
   --------------------------------------------------------
-  | # elements | element_0 | element_1 | ... | element_n |
+  | # size | base | element_0 | element_1 | ... | element_n |
   --------------------------------------------------------
   *)
-      let size = List.length immexprs in
+      let size = List.length immexprs in (* includes base *)
 
       (* call try_gc *)
       (* int* try_gc(int* alloc_ptr, int bytes_needed, int* cur_frame, int* cur_stack_top) *)
@@ -1109,7 +1109,7 @@ and compile_cexpr (e : tag cexpr) si env num_args is_tail =
       let (_, mov_instr) = List.fold_left
         (fun (i, instrs) immexpr ->
           let e_reg = compile_imm immexpr env in
-
+          Printf.printf ";printing immexpr %s\n" (arg_to_asm e_reg);
           (i + 1, instrs
                 @ [ IMov(Reg(EAX), e_reg);
                     IMov(RegOffset((word_size * i), ESI), Reg(EAX)); ])
@@ -1329,7 +1329,7 @@ and  native_to_lambda i (name, arity) =
   in
   (lambda_label, slot, closure_setup)
 
-and compile_class (c : tag aclassdecl) i env : instruction list =
+and compile_class (c : tag aclassdecl) env : instruction list =
 (*
   The header stores the number of elements in the tuple. The value is not tagged.
 (4 bytes)    (4 bytes)      (4 bytes)  (4 bytes) (4 bytes)
@@ -1344,11 +1344,12 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
           match decl with
             | ADFun(f_name, args, body, _) ->
               let (prologue, main, epilogue) = (compile_fun f_name args body env) in
-              instr @ [ILineComment(sprintf "Method %s.%s" class_name f_name)] @ prologue @ main @ epilogue
+              instr @ [ILineComment(sprintf "Method %s.%s" class_name f_name)]
+                    @ prologue @ main @ epilogue
      )
-     []
-     methods
-     in
+    []
+    methods
+    in
     let method_env = List.map
     (fun decl ->
          match decl with
@@ -1385,11 +1386,6 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
       ]
     in
 
-    (* Add this class descriptor pointer to the given stack slot *)
-    let slot = RegOffset((word_size * -i), ESP) in
-
-    (* store the size of the class descriptor *)
-
     let header_instr =
     (* Use the last bit of size to indicate whether it is forwarding *)
       [ IMov(RegOffset(0, ESI), Sized(DWORD_PTR, Const(size lsl 1))) ]
@@ -1399,7 +1395,9 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
     let (_, mov_instr) = List.fold_left (fun (index, inst) (lambda_name, lambda_pointer) ->
         let instr_for_method =
           [ILineComment("Adding %s lambda pointer for % class");
-          IMov(RegOffset((word_size * index), ESI), lambda_pointer)]
+           IMov(Reg(EAX), lambda_pointer);
+           IMov(RegOffset(word_size * index, ESI), Reg(EAX))]
+           (* [ IMov(RegOffset(0, ESI), Sized(DWORD_PTR, Const(size lsl 1))) ] *)
         in
         (index + 1, inst @ instr_for_method))
     (2, [])
@@ -1407,33 +1405,15 @@ and compile_class (c : tag aclassdecl) i env : instruction list =
     in
 
     let class_instr =
-      [[ ILineComment(sprintf "Methods of class")];
-        comp_methods;
-       [ ILineComment(sprintf "creating class descriptor" ) ];
-        gc_instr ;
-        header_instr ;
-        mov_instr ;
-        [
-           IMov(Reg(EAX), Reg(ESI));
-           IAdd(Reg(EAX), HexConst(0x1)); (* tag the class descriptor *)
-           IMov(slot, Reg(EAX)) (* TODO: V tables cannot be stored on stack so you need to fix that *)
-         ];
-      ]
-      in
-
-      let class_instr =
-        [ ILineComment(sprintf "Methods of class") ]
-        @ comp_methods;
-        [ ILineComment(sprintf "creating class descriptor")]
+        [ ILineComment (sprintf "Methods of class") ]
+        @ comp_methods
+        @ [ ILineComment(sprintf "creating class descriptor")]
         @ gc_instr
         @ header_instr
         @ mov_instr
-        @  [
-             IMov(Reg(EAX), Reg(ESI));
-             IAdd(Reg(EAX), HexConst(0x1)); (* tag the class descriptor *)
-             IMov(slot, Reg(EAX)) (* TODO: V tables cannot be stored on stack so you need to fix that *)
-           ]
-      in
+        (*storing the class vtable in the global variable in the data section*)
+        @  [IMov(LabelContents(class_name), Reg(ESI))]
+    in
     class_instr
 ;;
 
@@ -1517,18 +1497,21 @@ err_nil_deref:%s
   | AProgram(classdecls, decls, body, _) ->
      let native_lambdas = List.mapi native_to_lambda initial_env in
      let initial_env = List.map (fun (name, slot, _) -> (name, slot)) native_lambdas in
-
-     (* first we compile the classes so, we can store the class descriptors on the heap *)
-     (* let comp_classdecls = List.map (fun cls -> (compile_class cls 0 initial_env)) classdecls in *)
+     let initial_env =
+         List.fold_left
+           (fun env c -> match c with
+                             | AClass(name, _, _, _, _) -> (name, LabelContents(name))::env)
+         initial_env classdecls
+     in
+     let data_section =
+        List.fold_left
+          (fun str c -> match c with
+                            | AClass(name, _, _, _, _) -> (sprintf "%s%s dd 0\n" str name))
+        "section .data\n" classdecls
+     in
+     let comp_classdecls = List.map (fun cls -> (compile_class cls initial_env)) classdecls in
 
      let comp_decls = List.map (fun (_, _, code) -> code) native_lambdas in
-  (* $heap is a mock parameter name, just so that compile_fun knows our_code_starts_here takes in 1 parameter *)
-     let data_section = 
-        List.fold_left 
-          (fun str c -> match c with 
-                            | AClass(name, _, _, _, _) -> (sprintf "%s%s dd 0\n" str name))
-        "section .data\n" classdecls 
-     in
      let (prologue, comp_main, epilogue) = compile_fun "our_code_starts_here" ["$heap"] body initial_env in
      let heap_start = [
         (* Set the global variable STACK_BOTTOM to EBP *)
@@ -1542,7 +1525,7 @@ err_nil_deref:%s
         (* Then round back down *)
         IInstrComment(IAnd(Reg(ESI), HexConst(0xFFFFFFF8)), "by adding no more than 7 to it")
        ] in
-     let main = (prologue @ heap_start (* @ (List.flatten comp_classdecls) *) @ (List.flatten comp_decls) @ comp_main @ epilogue) in
+     let main = (prologue @ heap_start @ (List.flatten comp_classdecls)  @ (List.flatten comp_decls) @ comp_main @ epilogue) in
      sprintf "%s%s%s%s\n" data_section prelude (to_asm main) suffix
 ;;
 

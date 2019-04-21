@@ -1,14 +1,7 @@
-class Bar:
-  field a
-  field b
-  method add(self):
-    a + b
-end
-
-class Foo extends Bar:
+class Foo:
   field c
   method sub(self):
     1
 end
 
-let x : Bar = new Bar() in x.a ; x.b
+let x : Foo = new Foo() in x.c := 10
