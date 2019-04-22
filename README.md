@@ -518,3 +518,27 @@ in the environment.
 
 #### 3. Support for self
 Each class method should come with an argument self so the method can refer to class variables and other methods. self is a pointer to the class instance. To implement self, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including self. When an instance method is being called, self would be passed as the first argument.
+
+
+Some Implementation and design notes.
+
+
+Implementation choices.
+  - Syntax choices to represent the object creation, getters and setters.
+  - Objects and classes representation
+  - Mutation of class fields returns the mutated class object.
+  - Single vs Mulitple inheritance
+  - TyClass {name, fields , methods} - allows us flexibility to add type inference later.
+  - Desugar the object oriented AST to tuple expressions, allows us to reuse the implementation from Tuples.
+  - storing class descriptors in section .data as globals, allows us to implement inheritance and overriding.
+
+ Interesting semantics :
+   1. mutation returns the object unlike side effects which dont return anything. 
+   2. semantics inheritance of field_names, base class field names come before sub class in TyClass.
+   
+  Design consequences
+    1. classes definition comes before global functions
+    2. base class comes before sub class
+    3. Support for Multiple inheritance is difficult in future.
+    4. Support for monkey patching in future is possible
+    5. Support for type inference for class objects is possible in future.
