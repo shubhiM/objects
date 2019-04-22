@@ -364,9 +364,65 @@ changes in the parser, addition of new forms
 
 #### 1. Compilation of classes
 
+
+#### Convert object operations to get/set 
+
+```
+      | ENew(classname, loc) ->
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let (name, vars) = match classtype with
+              | TyClass(cname, fields, methods, loc) ->
+                  (cname, List.map (fun _ -> ENumber(0, loc)) fields)
+          in
+          ETuple(EId(name, loc)::vars , loc)
+      | EDot(expr, id, loc) ->
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let offset = match classtype with
+              | TyClass(cname, fields, methods, _) ->
+                  find_index id fields
+          in
+          EGetItem(expr, offset+1, 0, loc)
+      | EDotApp(expr, id, args, loc) ->
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let (name, offset) =
+              match classtype with
+              | TyClass(cname, fields, methods, _) ->
+                  (cname, find_index id methods)
+          in
+          let vtable = EId(name, loc) in
+          let args = expr::args in
+          EApp(EGetItem(vtable, offset+1, -1, loc), args, loc)
+      | EDotSet(expr, id, newval, loc) ->
+          let classname = name_of_expr expr in
+          let classtype = find env classname (string_of_sourcespan loc) in
+          let offset = match classtype with
+              | TyClass(cname, fields, methods, _) ->
+                  find_index id fields
+          in
+          ESetItem(expr, offset + 1, 0, newval, loc)
+```
+
 #### Compilation of Objects
 
 We store class information in class descriptor, which stores class methods. The address of class descriptor are stored as global variables. 
+
+```
+(4 bytes)    (4 bytes)   (4 bytes)  (4 bytes) (4 bytes)
+----------------------------------------------------------
+| N | pointer_to_vtable | method_1 | method_2 | method_n |
+----------------------------------------------------------
+```
+
+1. compile methods as lambdas
+
+2. allocate space for vtable
+
+3. set the header and put the address of lambdas on the vtable
+
+4. save the address of vtable as a global variable
+
 
 ```
 class Base
@@ -414,18 +470,22 @@ end
 ```
 An instance is stored on the heap like,
 ```
-| descriptor | N | x | y |
+| N | pointer_to_vtable | x | y |
 ```
+
 To handle single inheritance, the fields of the base class is are put in the begining of the extended class, followed by the fiels of the base class. For example,
 ```
+
 class Der extends Base
   fields z
 end
 ```
+
 is stored on the heap like,
 ```
-| descriptor | N  | x | y | z |
+| N | pointer_to_vtable  | x | y | z |
 ```
+
 #### 3. Support for self
 Each class method should come with an argument self so the method can refer to class variables and other methods. self is a pointer to the class instance. To implement self, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including self. When an instance method is being called, self would be passed as the first argument.
 
