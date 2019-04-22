@@ -444,47 +444,52 @@ in the environment.
                     | AProgram of 'a aclassdecl list * 'a adecl list * 'a aexpr * 'a
                   ;;
 
-#### 1. Compilation of classes
+#### Compilation : 
+   
+   1. Program compilation order changes, we first compile classes so we have class descriptors available before compiling methods and the main body.
+   
+   2. We add class Names to the initial environment. Initial environment is of the form (string * arg) list. Class Names are         converted to LabelContents.
+   
+          let initial_env =
+               List.fold_left
+                     (fun env c -> match c with
+                             | AClass(name, _, _, _, _) -> (name, LabelContents(name))::env)
+                      initial_env classdecls
+          in
+  
+  3. We create a section .data to create  global for each class in the data section.
+               
+               let data_section =
+                 List.fold_left
+                   (fun str c -> match c with
+                                     | AClass(name, _, _, _, _) -> (sprintf "%s%s dd 0\n" str name))
+                 "section .data\n" classdecls
+               in
+           
+  4. We compile Classes to VTables and move the ESI address to the global for that class.
+  
 
+            (4 bytes)
+            ---------------------------------------------------------------
+            | N      | pointer_to_vtable | method_1 | method_2 | method_n |
+            ----------------------------------------------------------------
+            
+   
+        4.1. compile methods as lambdas
 
-#### Convert object operations to get/set 
+        4.2. allocate space for vtable
 
-```
-      | ENew(classname, loc) ->
-          let classtype = find env classname (string_of_sourcespan loc) in
-          let (name, vars) = match classtype with
-              | TyClass(cname, fields, methods, loc) ->
-                  (cname, List.map (fun _ -> ENumber(0, loc)) fields)
-          in
-          ETuple(EId(name, loc)::vars , loc)
-      | EDot(expr, id, loc) ->
-          let classname = name_of_expr expr in
-          let classtype = find env classname (string_of_sourcespan loc) in
-          let offset = match classtype with
-              | TyClass(cname, fields, methods, _) ->
-                  find_index id fields
-          in
-          EGetItem(expr, offset+1, 0, loc)
-      | EDotApp(expr, id, args, loc) ->
-          let classname = name_of_expr expr in
-          let classtype = find env classname (string_of_sourcespan loc) in
-          let (name, offset) =
-              match classtype with
-              | TyClass(cname, fields, methods, _) ->
-                  (cname, find_index id methods)
-          in
-          let vtable = EId(name, loc) in
-          let args = expr::args in
-          EApp(EGetItem(vtable, offset+1, -1, loc), args, loc)
-      | EDotSet(expr, id, newval, loc) ->
-          let classname = name_of_expr expr in
-          let classtype = find env classname (string_of_sourcespan loc) in
-          let offset = match classtype with
-              | TyClass(cname, fields, methods, _) ->
-                  find_index id fields
-          in
-          ESetItem(expr, offset + 1, 0, newval, loc)
-```
+        4.3. set the header and put the address of lambdas on the vtable
+
+        4.4.  save the address of vtable as a global variable
+           
+
+#### Compilation of Objects
+
+#### Compilation of accessors
+
+#### Compilation of getters
+
 
 #### Compilation of Objects
 
@@ -497,13 +502,6 @@ We store class information in class descriptor, which stores class methods. The 
 ----------------------------------------------------------
 ```
 
-1. compile methods as lambdas
-
-2. allocate space for vtable
-
-3. set the header and put the address of lambdas on the vtable
-
-4. save the address of vtable as a global variable
 
 
 ```
