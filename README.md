@@ -445,7 +445,8 @@ in the environment.
                   ;;
 
 #### Compilation : 
-   
+  
+##### Compilation of Classes
    1. Program compilation order changes, we first compile classes so we have class descriptors available before compiling methods and the main body.
    
    2. We add class Names to the initial environment. Initial environment is of the form (string * arg) list. Class Names are         converted to LabelContents.
@@ -483,88 +484,37 @@ in the environment.
 
         4.4.  save the address of vtable as a global variable
            
+           
+#####  Compilation of Instance Variables.
 
-#### Compilation of Objects
+   1.  Class variables are compiled similar to tuples. For a class
+                  
+                  
+                  class Base
+                    fields x, y
+                  end
+                
+                
+                  An instance is stored on the heap like,
+                  
+                  ---------------------------------------
+                  | N  | pointer_to_vtable | x   | y    |
+                  
+                  ----------------------------------------
 
-#### Compilation of accessors
+  2. To handle multilevel inheritance, the fields of the base class are put before the extended class. For example.
+  
 
-#### Compilation of getters
+                  class Der extends Base
+                    fields z
+                  end
 
-
-#### Compilation of Objects
-
-We store class information in class descriptor, which stores class methods. The address of class descriptor are stored as global variables. 
-
-```
-(4 bytes)    (4 bytes)   (4 bytes)  (4 bytes) (4 bytes)
-----------------------------------------------------------
-| N | pointer_to_vtable | method_1 | method_2 | method_n |
-----------------------------------------------------------
-```
-
-
-
-```
-class Base
-  fields x, y
-  def bar(self):
-      ...
-  def baz(self):
-      ...
-end
-```
-A class descriptor should be created on the heap:
-```
-| N | Base_bar | Base_baz |
-```
-N is the number of class methods. 
-
-```
-class Der extends Base
-  fields z
-  def bar(self):
-      ...
-  def der(self):
-      ...
-end
-```
-
-Its class descriptor should be like
-```
-| N | Base_baz | Der_bar | Der_der |
-```
-where bar should point to the method defined in Der instead of Base.
-
-When a method is being called, like
-```
-b.bar()
-```
-First the lookup the class descriptor, which is stored in instance b. With the class descriptor, lookup the method at an offset from the start of the class descriptor. The offset is calculated at compile time. The method is a lambda expression, which can be applied.
-
-#### 2. Instance variables
-Class variables are compiled similar to tuples. For a class
-```
-class Base
-  fields x, y
-end
-```
-An instance is stored on the heap like,
-```
-| N | pointer_to_vtable | x | y |
-```
-
-To handle single inheritance, the fields of the base class is are put in the begining of the extended class, followed by the fiels of the base class. For example,
-```
-
-class Der extends Base
-  fields z
-end
-```
-
-is stored on the heap like,
-```
-| N | pointer_to_vtable  | x | y | z |
-```
+                  is stored on the heap like,
+                 
+                  ---------------------------------------------------
+                  | N    | pointer_to_vtable  | x   | y    | z     |
+                  
+                  ---------------------------------------------------
 
 #### 3. Support for self
 Each class method should come with an argument self so the method can refer to class variables and other methods. self is a pointer to the class instance. To implement self, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including self. When an instance method is being called, self would be passed as the first argument.
