@@ -523,7 +523,7 @@ Each class method should come with an argument self so the method can refer to c
 Some Implementation and design notes.
 
 
-Implementation choices.
+Implementation choices :
   - Syntax choices to represent the object creation, getters and setters.
   - Objects and classes representation
   - Mutation of class fields returns the mutated class object.
@@ -536,9 +536,10 @@ Implementation choices.
    1. mutation returns the object unlike side effects which dont return anything. 
    2. semantics inheritance of field_names, base class field names come before sub class in TyClass.
    
-  Design consequences
-    1. classes definition comes before global functions
-    2. base class comes before sub class
-    3. Support for Multiple inheritance is difficult in future.
-    4. Support for monkey patching in future is possible
-    5. Support for type inference for class objects is possible in future.
+  Design consequences :
+   
+   1. classes definition comes before global functions
+   2. base class comes before sub class
+   3. Support for Multiple inheritance is difficult in future.
+   4. Support for monkey patching in future is possible
+   5. Support for type inference for class objects is possible in future.
