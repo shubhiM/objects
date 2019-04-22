@@ -278,12 +278,16 @@ changes in the parser, addition of new forms
              9. <IDENTIFIER> . <IDENTIFIER> (x, y, z)  identifiers should be in scope and function arity should be correct.
             10: <IDENTIFIER> . <IDENTIFIER> := <something> both indentifiers should be in scope.
             
-#### Type system : New type is introduced TyClass which will get instantiated for each class definition. Thus, each class is a new custom type.
+#### ResolveObjTypes : 
+A new phase is introduced in the compiler pipeline in which we instantiate a TyClass Type for each class definition and also bind this type wherever object is created. Thus, for every object we create we have an information about its class/Type and also an environment in which we map this object with its associated type. The object - TyClass mapping in environment is used to desugar getters and setters on objects to directory contain offset instead of respective field or method name. Going forward we use these desugared syntax forms to anf and compile the program.
 
- 1. TyClass will get created for each class definition. TyClass(field_types, method_types, pos) where field_types and         method_types are both 'a bind list.
+1.  TyClass
+ TyClass will get created for each class definition. TyClass(class_name, field_types, method_types, pos) where field_types and         method_types are both 'a bind list and classname is a string
+ 
         
-         | TyClass of 'a bind list * 'a bind list * 'a 
+         | TyClass of string * 'a bind list * 'a bind list * 'a 
        
+    
    Example: TyClass for Point2D class introduced above.
                  
                  field_types_2D = [BName(x, TyCon(int, pos), pos);
@@ -295,10 +299,11 @@ changes in the parser, addition of new forms
                                     BName(get_y, nothing_to_int, pos)]
                  
                  class  ----> class Type
-                 Point2D  -> TyClass(field_types_2D, method_types_2D, pos)
+                 Point2D  -> TyClass(Point2D, field_types_2D, method_types_2D, pos)
         
    
-   Example: TyClass for Point3D class introduced above. Takes into account inheritance.
+   Example: TyClass for Point3D class introduced above. In case of inheritance, base class fields and methods come before the sub class fields and methods in TyClass definition. This design choice enables us to support overriding of fields and methods and sharing resources between base class and sub class.
+   
                 
                  field_types_3D = [BName(x, TyCon(int, pos), pos);
                                 BName(y, TyCon(int, pos), pos); 
@@ -315,49 +320,126 @@ changes in the parser, addition of new forms
                                  BName(set_y, int_to_class , pos);
                                  BName(set_z, int_to_class , pos)]
                  
-                 TyClass(field_types_3D, method_types_3D, pos)
+                 TyClass(Point3D, field_types_3D, method_types_3D, pos)
    
-  ###### Note** : In case of inheritance, base class fields and methods come before the sub class fields and methods in TyClass definition. This is of great significance later.
+
+2.  Creating a class environment and passing it along in the program. Class environment is 'a typ envt. 
+     
+                       Program(tydecls, classes, declgroups, main, pos) ->
+                          let new_class_env = List.fold_left
+                            (fun env cls ->
+                                match cls with
+                                |Class(name, base, fields, methods, tag) ->
+                                 let class_type = (type_of_this cls env) in
+                                 (name, class_type)::env)
+                          []
+                          classes
+                          in
+                          let new_declgroups = List.map (fun g -> (helpG g new_class_env)) declgroups in
+                          let new_main = helpE main new_class_env in
+                          Program(tydecls, classes, new_declgroups, new_main, pos)
+                         
+
+3. Updating let bindings to contain this new TyClass type for each class definition and updating object -> TyClass mapping
+in the environment.
+
+               let rec new_let_bindings (bindings : ('a bind * 'a expr * 'a) list) (env : 'a typ envt) =
+                       (* for every binding ('a bind * 'a expr * 'a)
+                          for every bind BName of string * 'a typ * 'a
+                          if the expr is ENew then get the TyRecord from the class environment.
+                       *)
+                       List.fold_left
+                       (fun (new_b, env) (bind, expr, pos1) ->
+                           match bind with
+                           | BName(name, typ, pos2) ->
+                             (
+                               match expr with
+                                 |ENew(class_name, loc) ->
+                                   let t = (find env class_name (string_of_sourcespan loc)) in
+                                   (new_b @ [(BName(name, t, pos2), helpE expr env, pos1)], (name, t)::env)
+                                 | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
+                             )
+                           | _ -> (new_b @ [(bind, expr, pos1)], env) (* keep as it is *)
+                       )
+                       ([], env)
+                       bindings
+                in
+                let helpE (e : sourcespan expr) (env : sourcespan typ envt) : sourcespan expr =
+                     match e with
+                     | ELet (bindings, body, loc) ->
+                         let (new_bindings, env) = (new_let_bindings bindings env) in
+                         ELet(new_bindings, (helpE body env), loc)
                 
+               
+3. Desugaring ENew to ETuple, EDot to EGetItem, EDotApp to EApp and EDotSet to ESetItem. Reusing Tuples AST for classes. 
+
+   ENew now becomes ETuple. 
+                          
+                          
+                          (4 bytes)    (4 bytes)        (4 bytes)  .................... (4 bytes)
+                          -----------------------------------------------------------------------
+                          | # size | base class VTable | element_0 | element_1 | ... | element_n |
+                          ------------------------------------------------------------------------
+                          size is the number of elements in the object.
+                          base class VTable is used to access the class descriptor for method calling.
+                          
+                         | ENew(classname, loc) ->
+                               let classtype = find env classname (string_of_sourcespan loc) in
+                               let (name, vars) = match classtype with
+                                   | TyClass(cname, fields, methods, loc) ->
+                                       (cname, List.map (fun _ -> ENumber(0, loc)) fields)
+                               in
+                               ETuple(EId(name, loc)::vars , loc)
+                               
+   EDot becomes EGetItem(expr, field_offset, 0, loc) where we are not using size semantically, it is serving like a flag size    = 0 means that we are accessing a field on an object.                         
+                               
+                           | EDot(expr, id, loc) ->
+                               let classname = name_of_expr expr in
+                               let classtype = find env classname (string_of_sourcespan loc) in
+                               let offset = match classtype with
+                                   | TyClass(cname, fields, methods, _) ->
+                                       find_index id fields
+                               in
+                               EGetItem(expr, offset+1, 0, loc)
+                           
+   EDotApp becomes call to a Lambda expression EGetItem(vtable , method_offset, -1, loc) with method arguments enclosed in the    function call. size is set to -1 to indicate that it is a method access and not a field access.
+   
+                           | EDotApp(expr, id, args, loc) ->
+                               let classname = name_of_expr expr in
+                               let classtype = find env classname (string_of_sourcespan loc) in
+                               let (name, offset) =
+                                   match classtype with
+                                   | TyClass(cname, fields, methods, _) ->
+                                       (cname, find_index id methods)
+                               in
+                               let vtable = EId(name, loc) in
+                               let args = expr::args in
+                               EApp(EGetItem(vtable, offset+1, -1, loc), args, loc)
  
-2. create a class_type_env which is a mapping of class name to its type and pass it to all the program decl groups and also subsequent expressions and even the main expression. 
+ 
+ EDotSet becomes ESetItem(expr, offset + 1, 0, newval, loc).                     
+                       
+                           | EDotSet(expr, id, newval, loc) ->
+                               let classname = name_of_expr expr in
+                               let classtype = find env classname (string_of_sourcespan loc) in
+                               let offset = match classtype with
+                                   | TyClass(cname, fields, methods, _) ->
+                                       find_index id fields
+                               in
+                               ESetItem(expr, offset + 1, 0, newval, loc)
 
-3. Change infer_expr to add type inference for four new forms
-            
-                  
 
-
-#### Tagging : 
-
-#### Anfing :
-
-                  type 'a immexpr = (* immediate expressions *)
-                    | ImmNum of int * 'a
-                    | ImmBool of bool * 'a
-                    | ImmId of string * 'a
-                    | ImmNil of 'a
+#### Anfing : Program is changed to add a new type for class and compound expressions are changed to add new types for Object creation, accessors and gettors. 
+       
                   and 'a cexpr = (* compound expressions *)
-                    | CIf of 'a immexpr * 'a aexpr * 'a aexpr * 'a
-                    | CPrim1 of prim1 * 'a immexpr * 'a
-                    | CPrim2 of prim2 * 'a immexpr * 'a immexpr * 'a
-                    | CApp of 'a immexpr * 'a immexpr list * 'a
-                    | CImmExpr of 'a immexpr (* for when you just need an immediate value *)
+                     ... 
                     | CTuple of 'a immexpr list * 'a
                     | CGetItem of 'a immexpr * int * 'a
                     | CSetItem of 'a immexpr * int * 'a immexpr * 'a
-                    | CLambda of string list * 'a aexpr * 'a  
-                    | CInitObj of string * 'a
-                    | CGetObj of 'a immexpr * string * 'a  // this can return both a field or a closure.
-                    | CSetObj of 'a immexpr * string * 'a immexpr * 'a // we will only have fields for mutation
-                 and 'a aexpr = (* anf expressions *)
-                    | ASeq of 'a cexpr * 'a aexpr * 'a
-                    | ALet of string * 'a cexpr * 'a aexpr * 'a
-                    | ALetRec of (string * 'a cexpr) list * 'a aexpr * 'a
-                    | ACExpr of 'a cexpr
-                  and 'a adecl =
-                    | ADFun of string * string list * 'a aexpr * 'a
+                  
                   and 'a aclassdecl =
                     | AClass of string * string *  'a bind list * 'a adecl list * 'a
+                  
                   and 'a aprogram =
                     | AProgram of 'a aclassdecl list * 'a adecl list * 'a aexpr * 'a
                   ;;
@@ -488,14 +570,3 @@ is stored on the heap like,
 
 #### 3. Support for self
 Each class method should come with an argument self so the method can refer to class variables and other methods. self is a pointer to the class instance. To implement self, we'll allocate the heap space with dummy values first when instantiating an object, then fill in the real value including self. When an instance method is being called, self would be passed as the first argument.
-
-#### 4. Support for instanceof
-We can use the address of the class descriptor to test class membership,
-## Timeline: 
-We are diving our project deliverables into two parts. 
-### Phase 1: 
-In phase 1, we are going to implement records first and then extend it to classes. The end of first phase will include testing the compilation part with different AST representations.
-### Phase 2: 
-In the phase 2, we are going to focus on getting from the syntax to the AST representation. And test end to end user programs.
-
-In the final write up we are going to mention changes in all phases that includes wellformedness, tagging and static typing. These additional compiler phases focusing on robustness will be added in the actual implementation depending on where we are in the timeline. However our report is going to be detailed wrt to what needs to change. 
